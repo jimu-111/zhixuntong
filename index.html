@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>智训通+数据分析中心 v1.5</title>
+    <title>优学堂</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -11,9 +11,9 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Microsoft YaHei', 'SimHei', 'PingFang SC', 'Helvetica Neue', sans-serif; }
         body { background: #f0f2f6; height: 100vh; overflow: hidden; }
-        .top-navbar { height: auto; min-height: 70px; }
-        .nav-buttons { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
-        .nav-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e6; padding: 8px 18px; border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 500; }
+        .sidebar { width: 220px; min-width: 220px; height: 100vh; overflow-y: auto; overflow-x: hidden; }
+        .nav-buttons { display: flex; flex-direction: column; gap: 4px; padding: 12px 12px; flex-wrap: nowrap; }
+        .nav-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e6; padding: 10px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 500; width: 100%; text-align: left; white-space: nowrap; }
         .nav-btn:hover { background: rgba(255,255,255,0.15); color: white; }
         .nav-btn.active { background: #2a5298; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border-color: #2a5298; }
         .main-content { flex: 1; overflow-y: auto; padding: 20px 28px; scroll-behavior: smooth; }
@@ -57,8 +57,8 @@
         .download-btn { background: #2a5298; color: white; border: none; padding: 3px 10px; border-radius: 20px; font-size: 0.65rem; cursor: pointer; margin-left: 8px; }
         .admin-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         
-        .modal-overlay { position: fixed; top:0;left:0;width:100%;height:100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-container { background: white; max-width: 1400px; width: 96%; border-radius: 24px; box-shadow: 0 20px 35px rgba(0,0,0,0.2); overflow: hidden; animation: fadeInUp 0.2s ease; max-height: 88vh; display: flex; flex-direction: column; }
+        .modal-overlay { position: fixed; top:0; left:220px; right:0; height:100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-container { background: white; max-width: 1200px; width: 94%; border-radius: 24px; box-shadow: 0 20px 35px rgba(0,0,0,0.2); overflow: hidden; animation: fadeInUp 0.2s ease; max-height: 88vh; display: flex; flex-direction: column; }
         .modal-header { background: #1f3a6b; color: white; padding: 12px 18px; font-weight: 700; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; }
         .modal-close-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
         .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
@@ -251,26 +251,53 @@
         .pagination button.active { background: #2a5298; color: white; border-color: #2a5298; }
         .pagination button:hover { background: #eef2ff; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: translateY(0);} }
+        @keyframes cardPopIn { from { opacity: 0; transform: scale(0.85) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        /* 自定义卡片弹窗 */
+        .custom-dialog-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: fadeIn 0.15s ease; }
+        .custom-dialog-card { background: white; border-radius: 20px; padding: 28px 24px 20px; max-width: 420px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.25); text-align: center; animation: cardPopIn 0.25s ease; }
+        .custom-dialog-icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .custom-dialog-msg { font-size: 0.95rem; color: #333; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
+        .custom-dialog-btns { display: flex; gap: 10px; justify-content: center; }
+        .custom-dialog-btn { padding: 10px 28px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; min-width: 80px; }
+        .custom-dialog-btn.primary { background: #1f3a6b; color: white; }
+        .custom-dialog-btn.primary:hover { background: #2a5298; }
+        .custom-dialog-btn.cancel { background: #f1f5f9; color: #5e6f8d; }
+        .custom-dialog-btn.cancel:hover { background: #e2e8f0; }
+        .custom-dialog-btn.danger { background: #c0392b; color: white; }
+        .custom-dialog-btn.danger:hover { background: #e74c3c; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Toast 通知 */
+        .custom-toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; border-radius: 16px; padding: 14px 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; animation: cardPopIn 0.25s ease; max-width: 500px; }
+        .custom-toast.success { border-left: 4px solid #27ae60; color: #1a5c38; }
+        .custom-toast.error { border-left: 4px solid #c0392b; color: #7d2020; }
+        .custom-toast.warning { border-left: 4px solid #f39c12; color: #7d5e10; }
+        .custom-toast.info { border-left: 4px solid #2a5298; color: #1f3a6b; }
     </style>
 </head>
 <body>
-<div style="display:flex; flex-direction:column; height:100vh;">
-    <div class="top-navbar" id="topNavbar" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%); color: #e2e8f0; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <div class="logo-area" style="padding: 16px 0;">
-            <h2 style="font-weight:700; font-size:1.3rem; background: linear-gradient(135deg, #b3e5fc, #ffffff); -webkit-background-clip: text; background-clip: text; color: transparent;">📚 智训通+数据分析中心</h2>
-            <p style="font-size:0.65rem; color:#7e8c9e; margin-top:4px;">智训通+数据分析中心 v1.3</p>
+<div style="display:flex; flex-direction:row; height:100vh;">
+    <div class="sidebar" id="sidebar" style="background: linear-gradient(180deg, #1e2a3a 0%, #0f1724 100%); color: #e2e8f0; display: flex; flex-direction: column; align-items: stretch; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+        <div class="logo-area" style="padding: 20px 16px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <h2 style="font-weight:700; font-size:1.2rem; background: linear-gradient(135deg, #b3e5fc, #ffffff); -webkit-background-clip: text; background-clip: text; color: transparent;">📚 优学堂</h2>
         </div>
-        <div class="nav-buttons" style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="nav-btn" data-nav="dashboard">📊 仪表盘</button>
-            <button class="nav-btn" data-nav="frontend">👥 新人进度</button>
-            <button class="nav-btn" data-nav="admin">⚙️ 管理后台</button>
-            <button class="nav-btn" data-nav="dataAnalysis">📊 数据分析中心</button>
-            <button class="nav-btn" data-nav="caseLibrary">📚 培训案例收集库</button>
-            <button class="nav-btn" data-nav="questionBank">📝 题库</button>
-            <!-- 失误数据分析模块已移除 -->
-            <button class="nav-btn" data-nav="examSystem">📋 考试系统</button>
-            <span id="syncStatus" style="background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:12px;font-size:0.75rem;color:#4fc3f7;display:inline-flex;align-items:center;gap:4px;margin-left:4px;border:1px solid rgba(255,255,255,0.15);" title="云端同步状态">☁️ 同步中</span>
-            <button class="nav-btn" data-nav="knowledgeBase">📖 知识库</button>
+        <div class="nav-buttons" style="display:flex; flex-direction:column; gap:4px; flex-wrap:nowrap;">
+            <button class="nav-btn active" data-nav="newcomerTraining" style="font-size:0.9rem;">🎓 新人培养</button>
+            <button class="nav-btn" data-nav="learningMap" style="font-size:0.9rem;">🗺️ 学习地图</button>
+            <button class="nav-btn" data-nav="qualityAnalysis" style="font-size:0.9rem;">📊 品控分析</button>
+            <button class="nav-btn" data-nav="trainingMaterials" style="font-size:0.9rem;">📚 培训资料</button>
+            <button class="nav-btn" data-nav="examBank" style="font-size:0.9rem;">📝 考试题库</button>
+            <div style="border-top:1px solid rgba(255,255,255,0.1);margin:8px 12px 4px;"></div>
+            <button class="nav-btn" data-nav="dashboard" style="font-size:0.8rem;opacity:0.75;">📊 仪表盘</button>
+            <button class="nav-btn" data-nav="frontend" style="font-size:0.8rem;opacity:0.75;">👥 新人进度</button>
+            <button class="nav-btn" data-nav="admin" style="font-size:0.8rem;opacity:0.75;">⚙️ 管理后台</button>
+            <button class="nav-btn" data-nav="dataAnalysis" style="font-size:0.8rem;opacity:0.75;">📈 数据分析</button>
+            <button class="nav-btn" data-nav="caseLibrary" style="font-size:0.8rem;opacity:0.75;">📋 案例收集库</button>
+            <button class="nav-btn" data-nav="questionBank" style="font-size:0.8rem;opacity:0.75;">📝 题库</button>
+            <button class="nav-btn" data-nav="examSystem" style="font-size:0.8rem;opacity:0.75;">📋 考试系统</button>
+            <button class="nav-btn" data-nav="knowledgeBase" style="font-size:0.8rem;opacity:0.75;">📖 知识库</button>
+        </div>
+        <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,0.08);">
+            <span id="syncStatus" style="display:block;text-align:center;font-size:0.75rem;color:#4fc3f7;padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);" title="云端同步状态">☁️ 同步中</span>
         </div>
     </div>
     <div class="main-content" id="mainContent" style="flex:1; overflow-y:auto; padding:20px 28px;"></div>
@@ -298,6 +325,72 @@
         });
     }
     
+    // ==================== 自定义卡片弹窗（替代原生 alert/confirm） ====================
+    function showToast(msg, type) {
+        type = type || 'info';
+        var icons = { success: '✅', error: '❌', warning: '⚠️', info: '💬' };
+        var toast = document.createElement('div');
+        toast.className = 'custom-toast ' + type;
+        toast.innerHTML = '<span>' + (icons[type] || '') + '</span><span>' + msg + '</span>';
+        document.body.appendChild(toast);
+        setTimeout(function() {
+            toast.style.transition = 'opacity 0.3s, transform 0.3s';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(-10px)';
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+        }, 2500);
+    }
+
+    function showAlert(msg, icon) {
+        icon = icon || '💬';
+        return new Promise(function(resolve) {
+            var overlay = document.createElement('div');
+            overlay.className = 'custom-dialog-overlay';
+            overlay.innerHTML = '<div class="custom-dialog-card"><div class="custom-dialog-icon">' + icon + '</div><div class="custom-dialog-msg">' + msg.replace(/\n/g, '<br>') + '</div><div class="custom-dialog-btns"><button class="custom-dialog-btn primary dialog-ok-btn">确定</button></div></div>';
+            document.body.appendChild(overlay);
+            overlay.querySelector('.dialog-ok-btn').onclick = function() { overlay.remove(); resolve(); };
+            overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); resolve(); } };
+        });
+    }
+
+    function showConfirm(msg, icon, danger) {
+        icon = icon || '⚠️';
+        return new Promise(function(resolve) {
+            var overlay = document.createElement('div');
+            overlay.className = 'custom-dialog-overlay';
+            var okClass = danger ? 'danger' : 'primary';
+            overlay.innerHTML = '<div class="custom-dialog-card"><div class="custom-dialog-icon">' + icon + '</div><div class="custom-dialog-msg">' + msg.replace(/\n/g, '<br>') + '</div><div class="custom-dialog-btns"><button class="custom-dialog-btn cancel dialog-cancel-btn">取消</button><button class="custom-dialog-btn ' + okClass + ' dialog-ok-btn">确定</button></div></div>';
+            document.body.appendChild(overlay);
+            overlay.querySelector('.dialog-ok-btn').onclick = function() { overlay.remove(); resolve(true); };
+            overlay.querySelector('.dialog-cancel-btn').onclick = function() { overlay.remove(); resolve(false); };
+            overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+        });
+    }
+
+    // ==================== 强提醒删除确认（卡片式弹窗） ====================
+    async function confirmDelete(itemName) {
+        return await showConfirm('确认删除「' + itemName + '」？\n\n此操作不可撤销，云端数据也将同步删除！', '🗑️', true);
+    }
+    // 全局异步删除函数（供内联 onclick 调用）
+    async function deleteCaseFile(period, idx) {
+        if (!await confirmDelete('该案例文件')) return;
+        var d = getBiweeklyCases();
+        d[period].splice(idx, 1);
+        saveBiweeklyCases(d);
+        renderBiweeklyTab();
+    }
+
+    // 覆盖原生 alert 为卡片式弹窗（需点确定关闭）
+    (function() {
+        window.alert = function(msg) {
+            var icon = '💬';
+            if (msg.indexOf('成功') >= 0 || msg.indexOf('✅') >= 0) icon = '✅';
+            else if (msg.indexOf('失败') >= 0 || msg.indexOf('❌') >= 0 || msg.indexOf('错误') >= 0) icon = '❌';
+            else if (msg.indexOf('⚠') >= 0 || msg.indexOf('警告') >= 0) icon = '⚠️';
+            showAlert(String(msg), icon);
+        };
+    })();
+
     // ==================== 存储生成的周报 ====================
     let generatedReports = JSON.parse(localStorage.getItem('generatedReports') || '{}');
     function saveReportToLocal(name, htmlContent) { generatedReports[name] = htmlContent; localStorage.setItem('generatedReports', JSON.stringify(generatedReports)); var sec = document.getElementById('reportGenSection'); if (sec) { sec.remove(); appendReportSection(); } }
@@ -548,8 +641,8 @@
                 else { alert("无法减少：已达到最小周数或当前考核周数大于减少后的总周数"); } 
             };
             const archiveBtn = modalElement.querySelector('#manualArchiveBtn');
-            if(archiveBtn) archiveBtn.onclick = () => { 
-                if(confirm("是否将此学员信息归档？")){
+            if(archiveBtn) archiveBtn.onclick = async () => {
+                if(await showConfirm("是否将此学员信息归档？", '📦')){
                     if(student.manualArchiveToGraduation()){ saveToLocal(); modalElement.remove(); renderFrontend(); alert(`学员 "${student.name}" 已手动归档到档案馆`); } 
                     else { alert("归档失败"); }
                 }
@@ -791,8 +884,8 @@
         overlay.querySelectorAll('.fe-admin-avatar').forEach(img=>{img.addEventListener('click',()=>showAvatarManageModal(parseInt(img.dataset.id), overlay));});
         overlay.querySelectorAll('.edit-student').forEach(btn=>{btn.addEventListener('click',()=>alert('编辑学员功能已保留'));});
         overlay.querySelectorAll('.delete-student').forEach(btn=>{
-            btn.addEventListener('click',()=>{
-                if(confirm('确定删除该学员吗？')){
+            btn.addEventListener('click',async ()=>{
+                if(await confirmDelete('学员')){
                     const sid=parseInt(btn.dataset.id);
                     students=students.filter(s=>s.id!==sid);
                     if(currentPanoramaStudentId===sid) currentPanoramaStudentId=students[0]?.id;
@@ -1049,7 +1142,7 @@
             if(!this.files||!this.files[0]) return;
             const file = this.files[0];
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
                     if(!data._backupVersion) { alert('❌ 不是有效的备份文件'); return; }
@@ -1087,7 +1180,7 @@
                         if(data.questionBankData) info.push(`题库：${(JSON.parse(data.questionBankData).questions||[]).length} 题`);
                     }
 
-                    if(!confirm(`确认导入以下备份？\n\n${info.join('\n')}\n\n⚠️ 导入将覆盖当前所有数据，此操作不可撤销！`)) return;
+                    if(!await showConfirm(`确认导入以下备份？\n\n${info.join('\n')}\n\n⚠️ 导入将覆盖当前所有数据，此操作不可撤销！`, '📥', true)) return;
 
                     // 恢复所有数据
                     const keys = Object.keys(dataMap);
@@ -6263,7 +6356,7 @@ ${(() => { try { if (!siteColumn) return ''; const sm = {}; allRows.forEach(row 
                         <div style="font-size:0.75rem;color:#94a3b8;">${timeStr} · ${sizeStr}</div>
                     </div>
                     <button onclick="(function(){var d=getBiweeklyCases();var f=(d['${currentBiweeklyPeriod}']||[])[${idx}];if(f&&f.fileData){var a=document.createElement('a');a.href=f.fileData;a.download=f.fileName;a.click();}})()" style="background:#eef2ff;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:0.75rem;color:#2a5298;">📥 下载</button>
-                    <button onclick="(function(){if(!confirm('确定删除该文件？'))return;var d=getBiweeklyCases();d['${currentBiweeklyPeriod}'].splice(${idx},1);saveBiweeklyCases(d);renderBiweeklyTab();})()" style="background:#fef2f2;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:0.75rem;color:#c0392b;">🗑️ 删除</button>
+                    <button onclick="deleteCaseFile('${currentBiweeklyPeriod}',${idx})" style="background:#fef2f2;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:0.75rem;color:#c0392b;">🗑️ 删除</button>
                 </div>`;
             }).join('');
         }
@@ -6468,10 +6561,10 @@ ${(() => { try { if (!siteColumn) return ''; const sm = {}; allRows.forEach(row 
 
         // 删除按钮
         content.querySelectorAll('.deleteManualCaseBtn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.idx);
                 const cases = getManualCases();
-                if (!confirm(`确定删除质检码为「${cases[idx]?.qcCode || ''}」的案例吗？`)) return;
+                if (!await confirmDelete(`质检码「${cases[idx]?.qcCode || ''}」的案例`)) return;
                 cases.splice(idx, 1);
                 saveManualCases(cases);
                 renderManualTab();
@@ -6673,10 +6766,10 @@ ${(() => { try { if (!siteColumn) return ''; const sm = {}; allRows.forEach(row 
 
         // 删除
         content.querySelectorAll('.deleteKnowledgeBtn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.idx);
                 const cases = getKnowledgeCases();
-                if (!confirm(`确定删除「${cases[idx]?.title || ''}」吗？`)) return;
+                if (!await confirmDelete(`「${cases[idx]?.title || ''}」`)) return;
                 cases.splice(idx, 1);
                 saveKnowledgeCases(cases);
                 renderKnowledgeTab();
@@ -6824,10 +6917,10 @@ ${(() => { try { if (!siteColumn) return ''; const sm = {}; allRows.forEach(row 
 
         // 删除
         content.querySelectorAll('.deleteCaseBtn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.idx);
                 const cases = getManualCases();
-                if (!confirm(`确定删除质检码为「${cases[idx]?.qcCode || ''}」的案例吗？此操作不可撤销。`)) return;
+                if (!await confirmDelete(`质检码「${cases[idx]?.qcCode || ''}」的案例`)) return;
                 cases.splice(idx, 1);
                 saveManualCases(cases);
                 renderCompletedCasesTab();
@@ -7529,7 +7622,12 @@ URL.revokeObjectURL(url);
         document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
         const activeEl = document.querySelector(`.nav-btn[data-nav="${nav}"]`);
         if (activeEl) activeEl.classList.add('active');
-        if (nav === 'dashboard') renderDashboard();
+        if (nav === 'newcomerTraining') renderNewcomerTraining();
+        else if (nav === 'learningMap') renderLearningMap();
+        else if (nav === 'qualityAnalysis') renderQualityAnalysis();
+        else if (nav === 'trainingMaterials') renderTrainingMaterials();
+        else if (nav === 'examBank') renderExamBank();
+        else if (nav === 'dashboard') renderDashboard();
         else if (nav === 'frontend') renderFrontend();
         else if (nav === 'admin') renderAdminContent();
         else if (nav === 'dataAnalysis') { renderDataAnalysis(); setTimeout(appendReportSection, 500); }
@@ -7538,6 +7636,23 @@ URL.revokeObjectURL(url);
         else if (nav === 'errorAnalysis') renderErrorAnalysis();
         else if (nav === 'examSystem') renderExamSystem();
         else if (nav === 'knowledgeBase') renderKnowledgeBase();
+    }
+
+    // ==================== 5大模块空容器 ====================
+    function renderNewcomerTraining() {
+        document.getElementById('mainContent').innerHTML = `<div class="panorama-card"><div class="panorama-header"><h3 style="font-size:1.1rem;font-weight:700;color:#1f3a6b;">🎓 新人培养</h3></div><div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:0.95rem;">此模块待建设，后续将移入相关功能</div></div>`;
+    }
+    function renderLearningMap() {
+        document.getElementById('mainContent').innerHTML = `<div class="panorama-card"><div class="panorama-header"><h3 style="font-size:1.1rem;font-weight:700;color:#1f3a6b;">🗺️ 学习地图</h3></div><div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:0.95rem;">此模块待建设，后续将移入相关功能</div></div>`;
+    }
+    function renderQualityAnalysis() {
+        document.getElementById('mainContent').innerHTML = `<div class="panorama-card"><div class="panorama-header"><h3 style="font-size:1.1rem;font-weight:700;color:#1f3a6b;">📊 品控分析</h3></div><div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:0.95rem;">此模块待建设，后续将移入相关功能</div></div>`;
+    }
+    function renderTrainingMaterials() {
+        document.getElementById('mainContent').innerHTML = `<div class="panorama-card"><div class="panorama-header"><h3 style="font-size:1.1rem;font-weight:700;color:#1f3a6b;">📚 培训资料</h3></div><div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:0.95rem;">此模块待建设，后续将移入相关功能</div></div>`;
+    }
+    function renderExamBank() {
+        document.getElementById('mainContent').innerHTML = `<div class="panorama-card"><div class="panorama-header"><h3 style="font-size:1.1rem;font-weight:700;color:#1f3a6b;">📝 考试题库</h3></div><div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:0.95rem;">此模块待建设，后续将移入相关功能</div></div>`;
     }
     
     // ==================== 截图功能通用函数 ====================
@@ -7950,12 +8065,12 @@ URL.revokeObjectURL(url);
         if (onSuccess) onSuccess(totalAdded, duplicates.length);
     }
 
-    function clearQuestionBank() {
+    async function clearQuestionBank() {
         const qb = getQuestionBank();
         const total = (qb.questions || []).length;
         if (total === 0) { alert('题库已为空，无需清空'); return; }
-        if (!confirm('⚠️ 确定要清空全部题库吗？\n\n当前共有 ' + total + ' 道题目、' + Object.keys(qb.categories).length + ' 个分类。\n\n此操作不可撤销！')) return;
-        if (!confirm('⚠️ 再次确认：所有题目和分类数据将被永久删除！\n\n点击"确定"继续，点击"取消"放弃。')) return;
+        if (!await showConfirm('⚠️ 确定要清空全部题库吗？\n\n当前共有 ' + total + ' 道题目、' + Object.keys(qb.categories).length + ' 个分类。\n\n此操作不可撤销！', '🗑️', true)) return;
+        if (!await showConfirm('⚠️ 再次确认：所有题目和分类数据将被永久删除！', '🗑️', true)) return;
         const pwd = prompt('🔐 请输入管理密码以确认清空操作：');
         if (pwd === null) return;
         if (pwd !== ADMIN_PASSWORD) { alert('❌ 密码错误，操作已取消'); return; }
@@ -7967,12 +8082,12 @@ URL.revokeObjectURL(url);
 
     function getAllQBQuestions() { return getQuestionBank().questions || []; }
 
-    function clearCatQuestions(catName) {
+    async function clearCatQuestions(catName) {
         const qb = getQuestionBank();
         const count = (qb.questions || []).filter(q => q.category === catName).length;
         if (count === 0) { alert('该分类下无题目'); return; }
-        if (!confirm('⚠️ 确定清空分类「' + catName + '」下的全部 ' + count + ' 道题目吗？\n\n此操作不可撤销！')) return;
-        if (!confirm('⚠️ 再次确认：此操作将永久删除该分类下的所有题目！')) return;
+        if (!await showConfirm('⚠️ 确定清空分类「' + catName + '」下的全部 ' + count + ' 道题目吗？\n\n此操作不可撤销！', '🗑️', true)) return;
+        if (!await showConfirm('⚠️ 再次确认：此操作将永久删除该分类下的所有题目！', '🗑️', true)) return;
         const pwd = prompt('🔐 请输入管理密码以确认操作：');
         if (pwd === null) return;
         if (pwd !== ADMIN_PASSWORD) { alert('❌ 密码错误，操作已取消'); return; }
@@ -8186,8 +8301,8 @@ URL.revokeObjectURL(url);
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
     }
 
-    function deleteQBFromDetail(id) {
-        if (!confirm('确定删除该题目？')) return;
+    async function deleteQBFromDetail(id) {
+        if (!await confirmDelete('该题目')) return;
         const qb = getQuestionBank();
         qb.questions = qb.questions.filter(q => q.id !== id);
         saveQuestionBank(qb);
@@ -8692,8 +8807,8 @@ URL.revokeObjectURL(url);
         renderQuestionBank();
     }
 
-    function deleteQBQuestion(id) {
-        if (!confirm('确定删除该题目？')) return;
+    async function deleteQBQuestion(id) {
+        if (!await confirmDelete('该题目')) return;
         const qb = getQuestionBank();
         qb.questions = qb.questions.filter(q => q.id !== id);
         saveQuestionBank(qb);
@@ -10805,8 +10920,8 @@ URL.revokeObjectURL(url);
         renderKnowledgeBase();
     }
 
-    function deleteKBEntry(kbId) {
-        if (!confirm('确定删除该知识库？')) return;
+    async function deleteKBEntry(kbId) {
+        if (!await confirmDelete('该知识库')) return;
         var kbList = getKBList();
         saveKBList(kbList.filter(function(k) { return k.id !== kbId; }));
         if (kbActiveId === kbId) kbActiveId = null;
@@ -10837,7 +10952,7 @@ URL.revokeObjectURL(url);
         }
 
         // 隐藏导航栏，清空页面，显示独立考试界面
-        var navbar = document.querySelector('.top-navbar');
+        var navbar = document.querySelector('.sidebar');
         var main = document.getElementById('mainContent');
         var navBtns = document.querySelector('.nav-buttons');
         if (navbar) navbar.style.display = 'none';
@@ -10948,8 +11063,8 @@ URL.revokeObjectURL(url);
                 btn.onclick = () => viewExamRecords(btn.dataset.viewexam);
             });
             document.querySelectorAll('[data-delexam]').forEach(btn => {
-                btn.onclick = () => {
-                    if (!confirm('确定删除该考试记录？')) return;
+                btn.onclick = async () => {
+                    if (!await confirmDelete('考试记录')) return;
                     const data = getExamHistory();
                     delete data[btn.dataset.delexam];
                     saveExamHistory(data);
@@ -10964,7 +11079,7 @@ URL.revokeObjectURL(url);
         const exam = history[examId];
         if (!exam) { alert('试卷不存在'); return; }
         currentExamId = examId;
-        currentExamAnswers = {};
+        currentExamAnswers = { _questions: [] };
         if (!exam.attempts) exam.attempts = 0;
         exam.maxAttempts = exam.maxAttempts || 2;
         if (exam.status === 'completed' && exam.attempts >= exam.maxAttempts) {
@@ -10982,6 +11097,7 @@ URL.revokeObjectURL(url);
         exam.startedAt = new Date().toISOString();
         exam.timeLimit = exam.timeLimit || 30;
         saveExamHistory(history);
+        currentExamAnswers._questions = questions;
         let questionsHtml = questions.map((q, idx) => {
             let answerArea = '';
             if (q.type === 'choice' && q.options && q.options.length > 0) {
@@ -11036,8 +11152,7 @@ URL.revokeObjectURL(url);
             if (timeLeft <= 60 && timerEl) timerEl.style.color = '#c0392b';
             if (timeLeft <= 0) {
                 clearInterval(exam._timerInterval);
-                alert('⏱️ 考试时间到，系统将自动提交答卷');
-                submitExam();
+                showAlert('⏱️ 考试时间到，系统将自动提交答卷', '⏰').then(function() { submitExam(); });
             }
         }, 1000);
 
@@ -11053,10 +11168,27 @@ URL.revokeObjectURL(url);
             document.querySelectorAll('.exam-answer-text').forEach(textarea => {
                 textarea.oninput = function() { currentExamAnswers[parseInt(this.dataset.qidx)] = this.value; };
             });
-            document.getElementById('submitExamBtn').onclick = () => submitExam();
-            document.getElementById('cancelExamBtn').onclick = () => {
-                document.getElementById('examActiveArea').style.display = 'none';
-                currentExamId = null; currentExamAnswers = {};
+            document.getElementById('submitExamBtn').onclick = async () => {
+                // 检查未作答题目
+                const questions = currentExamAnswers._questions || [];
+                const totalQ = questions.length;
+                const answered = Object.keys(currentExamAnswers).filter(k => k !== '_questions' && currentExamAnswers[k] !== undefined && currentExamAnswers[k] !== null && currentExamAnswers[k] !== '').length;
+                const unanswered = totalQ - answered;
+                let msg = '';
+                if (unanswered > 0) {
+                    msg = '⚠️ 还有 ' + unanswered + ' 道题未作答（共 ' + totalQ + ' 题）\n\n';
+                }
+                msg += '确认提交答卷吗？提交后将无法修改。';
+                var ok = await showConfirm(msg, unanswered > 0 ? '⚠️' : '📝');
+                if (!ok) return;
+                submitExam();
+            };
+            document.getElementById('cancelExamBtn').onclick = async () => {
+                var ok = await showConfirm('确定取消考试吗？已作答内容将丢失。', '⚠️');
+                if (ok) {
+                    document.getElementById('examActiveArea').style.display = 'none';
+                    currentExamId = null; currentExamAnswers = { _questions: [] };
+                }
             };
             document.getElementById('examActiveArea').scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -11264,12 +11396,40 @@ URL.revokeObjectURL(url);
         }).then(function(n){ var s=document.getElementById("syncStatus"); if(s){ s.textContent="☁️ 已同步"; s.style.color="#27ae60"; s.style.borderColor="rgba(39,174,96,0.3)"; } return n || 0; }).catch(function(){ var s=document.getElementById("syncStatus"); if(s){ s.textContent="☁️ 拉取中"; s.style.color="#f39c12"; s.style.borderColor="rgba(243,156,18,0.3)"; } return 0; });
     }
 
-    // 替换 localStorage 的 setItem 为带同步的版本
+    function _syncRemoveItem(key) {
+        _realLS.removeItem(key);
+        if (key && !key.startsWith('_')) {
+            // 从云端删除该 key
+            fetch(SUPABASE_URL + '/rest/v1/app_data?key=eq.' + encodeURIComponent(key), {
+                method: 'DELETE',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+            }).catch(function(){});
+        }
+    }
+
+    function _syncClear() {
+        var keys = [];
+        for (var i = 0; i < _realLS.length; i++) {
+            var k = _realLS.key(i);
+            if (k && !k.startsWith('_')) keys.push(k);
+        }
+        _realLS.clear();
+        // 批量删除云端数据
+        if (keys.length > 0) {
+            var filter = keys.map(function(k) { return 'key=eq.' + encodeURIComponent(k); }).join(',');
+            fetch(SUPABASE_URL + '/rest/v1/app_data?or=(' + filter + ')', {
+                method: 'DELETE',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+            }).catch(function(){});
+        }
+    }
+
+    // 替换 localStorage 为带同步的版本
     var _lsProxy = {
         getItem: function(k) { return _realLS.getItem(k); },
         setItem: function(k, v) { _syncSetItem(k, v); },
-        removeItem: function(k) { _realLS.removeItem(k); },
-        clear: function() { _realLS.clear(); },
+        removeItem: function(k) { _syncRemoveItem(k); },
+        clear: function() { _syncClear(); },
         get length() { return _realLS.length; },
         key: function(i) { return _realLS.key(i); }
     };
@@ -11282,7 +11442,7 @@ URL.revokeObjectURL(url);
         var initParams = new URLSearchParams(window.location.search);
         var initExam = initParams.get('exam');
         if (initExam) { startStandaloneExam(initExam); }
-        else { switchNav('dashboard'); }
+        else { switchNav('newcomerTraining'); }
     });
     // 永久删除雍彬彬的数据 + 修正旧版名字（从localStorage清理）+ 迁移旧数据到扁平按周期存储
     (function() {
