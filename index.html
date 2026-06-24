@@ -285,9 +285,9 @@
         .error-dashboard .filter-btn { padding:8px 16px; border-radius:20px; border:1px solid #cbd5e1; background:white; cursor:pointer; font-size:0.8rem; font-weight:500; transition:all 0.15s; }
         .error-dashboard .filter-btn.active { background:#1f3a6b; color:white; border-color:#1f3a6b; }
         .error-dashboard .error-table-wrapper { background:white; border-radius:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.04); border:1px solid #eef2f6; }
-        .error-dashboard .error-table { width:100%; border-collapse:collapse; font-size:0.82rem; border:1px solid #e2e8f0; }
-        .error-dashboard .error-table th { background:#f8fafc; font-weight:600; padding:10px 10px; text-align:center; border:1px solid #e2e8f0; white-space:nowrap; }
-        .error-dashboard .error-table td { padding:8px 10px; text-align:center; border:1px solid #eef2f6; }
+        .error-dashboard .error-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .error-dashboard .error-table th { background:#f8fafc; font-weight:600; padding:10px 10px; text-align:center; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
+        .error-dashboard .error-table td { padding:8px 10px; text-align:center; border-bottom:1px solid #f1f5f9; }
         .error-dashboard .error-table tbody tr:hover { background:#f8fafd; }
         .error-dashboard .source-tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:500; }
         .error-dashboard .source-tag.cs { background:#e8f5e9; color:#2e7d32; }
@@ -11452,7 +11452,7 @@ URL.revokeObjectURL(url);
                     return '<tr><td style="text-align:center;">' + formatShortDate(e.date) + '</td><td style="text-align:center;"><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td style="text-align:center;">' + escapeHtml(e.reviewer) + ' (' + escapeHtml(e.site) + ')</td><td style="text-align:center;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(e.note) + '">' + truncateText(e.note, 35) + '</td><td style="text-align:center;font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
                 }).join('');
             var pag = totalPages > 1 ? '<div class="pagination"><button ' + (pg <= 1 ? 'disabled' : '') + ' onclick="window._popupGoPage(' + (pg - 1) + ')">上一页</button><span>' + pg + '/' + totalPages + '</span><button ' + (pg >= totalPages ? 'disabled' : '') + ' onclick="window._popupGoPage(' + (pg + 1) + ')">下一页</button></div>' : '';
-            return '<table class="error-table" style="width:100%;border:1px solid #e2e8f0;"><thead><tr><th>日期</th><th>来源</th><th>初审人（站点）</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pag;
+            return '<table class="error-table" style="width:100%;"><thead><tr><th>日期</th><th>来源</th><th>初审人（站点）</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pag;
         }
         window._popupGoPage = function(pg) { var a = document.getElementById('popupTableArea'); if (a) a.innerHTML = renderTable(pg); };
         var overlay = document.createElement('div');
@@ -11498,7 +11498,7 @@ URL.revokeObjectURL(url);
             return '<div style="display:flex;gap:10px;">' + entries.map(function(p) {
                 var pct = Math.round(p[1] / totalCount * 100);
                 var color = barHeatColor(pct);
-                return '<div style="flex:1;text-align:center;padding:10px 8px;background:linear-gradient(180deg,' + color + '33 0%,' + color + '11 100%);border-radius:12px;border:1px solid ' + color + '44;"><div style="font-size:1.3rem;color:' + color + ';">' + p[1] + '</div><div style="font-size:0.72rem;color:#5e6f8d;">' + p[0] + '</div><div style="height:8px;background:#eef2f6;border-radius:4px;margin-top:6px;"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:4px;"></div></div><div style="font-size:0.7rem;color:#5e6f8d;margin-top:2px;">' + pct + '%</div></div>';
+                return '<div style="flex:1;text-align:center;padding:14px 10px;background:linear-gradient(180deg,' + color + '22 0%,#fff 100%);border-radius:14px;border:2px solid ' + color + '55;box-shadow:0 1px 3px rgba(0,0,0,0.04);"><div style="font-size:1.4rem;font-weight:600;color:#2d3748;">' + p[1] + '</div><div style="font-size:0.75rem;color:#5e6f8d;margin:4px 0;">' + p[0] + '</div><div style="height:10px;background:#eef2f6;border-radius:5px;"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:5px;"></div></div><div style="font-size:0.7rem;color:#5e6f8d;margin-top:3px;">' + pct + '%</div></div>';
             }).join('') + '</div>';
         }
         var sourceCols = renderDistCols(sources, total);
@@ -11544,7 +11544,7 @@ URL.revokeObjectURL(url);
                     rows_arr.push('<tr>' + row.join('') + '</tr>');
                 });
             });
-            var html = '<table class="error-table" style="width:100%;table-layout:fixed;border:1px solid #e2e8f0;"><thead><tr><th style="width:18%;">失误类别</th><th style="width:8%;">个数</th><th style="width:18%;">占比</th><th style="width:40%;">失误详细</th><th style="width:16%;">质检码</th></tr></thead><tbody>';
+            var html = '<table class="error-table" style="width:100%;table-layout:fixed;"><thead><tr><th style="width:18%;">失误类别</th><th style="width:8%;">个数</th><th style="width:18%;">占比</th><th style="width:40%;">失误详细</th><th style="width:16%;">质检码</th></tr></thead><tbody>';
             if (rows_arr.length === 0) html += '<tr><td colspan="5" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>';
             else html += rows_arr.join('');
             html += '</tbody></table>';
@@ -12063,7 +12063,7 @@ URL.revokeObjectURL(url);
                         // 根据是否有E列使用不同列宽
                         var colA, colB, colC, colD, colE;
                         if (hasAnyActions) {
-                            colA='18%'; colB='10%'; colC='10%'; colD='44%'; colE='18%';
+                            colA='16%'; colB='10%'; colC='10%'; colD='38%'; colE='26%';
                         } else {
                             colA='22%'; colB='14%'; colC='12%'; colD='52%'; colE='0';
                         }
@@ -12074,7 +12074,7 @@ URL.revokeObjectURL(url);
                                 '<td style="text-align:center;padding:6px 3px;width:'+colB+';font-size:0.7rem;color:#5e6f8d;">' + escapeHtml(r.sites) + '</td>' +
                                 '<td style="text-align:center;padding:6px 3px;width:'+colC+';font-size:0.7rem;color:#5e6f8d;">' + r.count + '次</td>' +
                                 '<td style="text-align:center;padding:6px 3px;width:'+colD+';font-size:0.7rem;color:#5e6f8d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.cats || '-') + '</td>' +
-                                (hasAnyActions ? '<td style="text-align:center;padding:6px 3px;width:'+colE+';">' + (r.actions||'') + '</td>' : '') +
+                                (hasAnyActions ? '<td style="text-align:center;padding:6px 3px;width:'+colE+';"><div style="display:flex;gap:3px;justify-content:center;flex-wrap:nowrap;">' + (r.actions||'') + '</div></td>' : '') +
                             '</tr>';
                         }).join('');
                     }
