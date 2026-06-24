@@ -10974,22 +10974,26 @@ URL.revokeObjectURL(url);
     const ERROR_DASHBOARD_PAGE_SIZE = 30;
     let errorDashboardFilter = { period: 'day', site: 'all', category: 'all', reviewer: 'all' };
 
-    // 飞书API请求（自动处理CORS降级）
+    // 飞书API请求 — 通过Supabase Edge Function代理（避免CORS）
+    const FEISHU_PROXY_URL = 'https://zfxwnixlvdxawoylhgxj.supabase.co/functions/v1/feishu-proxy';
     async function feishuApiFetch(url, options) {
         options = options || {};
-        // 尝试直连
-        try {
-            var resp = await fetch(url, options);
-            if (resp.ok) return resp;
-        } catch(e) {}
-        // CORS代理降级
-        var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-        var proxyOpts = {
+        var proxyBody = {
+            url: url,
             method: options.method || 'GET',
             headers: options.headers || {}
         };
-        if (options.body) proxyOpts.body = options.body;
-        return await fetch(proxyUrl, proxyOpts);
+        if (options.body) proxyBody.body = options.body;
+        var resp = await fetch(FEISHU_PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(proxyBody)
+        });
+        if (!resp.ok) throw new Error('代理请求失败: ' + resp.status);
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        // 包装成类Response对象以便调用.json()
+        return { ok: true, json: function() { return Promise.resolve(data); } };
     }
 
     function excelSerialToDate(serial) {
