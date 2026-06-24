@@ -11861,9 +11861,19 @@ URL.revokeObjectURL(url);
         var msg = document.getElementById('portraitSearchMsg');
         if (!msg) return;
         if (v && found === 0) {
-            var f = errorDashboardFilter;
-            var inAll = errorDashboardData.some(function(e) { return e.reviewer.toLowerCase().indexOf(v) >= 0; });
-            msg.textContent = inAll ? '该初审不在当前站点筛选维度，请重新选择站点' : '本期维度无此初审失误信息';
+            var origSite = errorDashboardFilter.site;
+            if (origSite !== 'all') {
+                errorDashboardFilter.site = 'all';
+                var noSiteFilter = getFilteredErrors();
+                errorDashboardFilter.site = origSite;
+                if (noSiteFilter.some(function(e) { return e.reviewer.toLowerCase().indexOf(v) >= 0; })) {
+                    msg.textContent = '该初审不在当前站点筛选维度，请重新选择站点';
+                } else {
+                    msg.textContent = '本期维度无此初审失误信息';
+                }
+            } else {
+                msg.textContent = '本期维度无此初审失误信息';
+            }
             msg.style.display = 'block';
         } else {
             msg.style.display = 'none';
