@@ -11368,13 +11368,11 @@ URL.revokeObjectURL(url);
         var hColor = healthBarColor(health);
 
         // 失误来源 + 站点分布 — 横向均分
-        var sourceMap = {}, siteMap = {};
+        var sourceMap = {};
         filtered.forEach(function(e) {
             sourceMap[e.source] = (sourceMap[e.source] || 0) + 1;
-            if (e.site) siteMap[e.site] = (siteMap[e.site] || 0) + 1;
         });
         var sources = Object.entries(sourceMap).sort(function(a, b) { return b[1] - a[1]; });
-        var sites = Object.entries(siteMap).sort(function(a, b) { return b[1] - a[1]; });
         function renderDistCols(entries, totalCount) {
             return entries.map(function(p) {
                 var pct = Math.round(p[1] / totalCount * 100);
@@ -11383,7 +11381,6 @@ URL.revokeObjectURL(url);
             }).join('');
         }
         var sourceCols = renderDistCols(sources, total);
-        var siteCols = renderDistCols(sites, total);
 
         // 按类别→详细聚合（类别合并行）
         var catGroups = {};
@@ -11451,9 +11448,7 @@ URL.revokeObjectURL(url);
             '</div>' +
             '<div class="modal-body">' +
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📊 失误来源</div>' +
-                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:6px;display:flex;gap:8px;">' + (sourceCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
-                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;margin-top:8px;">📍 站点分布</div>' +
-                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:14px;display:flex;gap:8px;">' + (siteCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
+                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:14px;display:flex;gap:8px;">' + (sourceCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📋 失误详细分析</div>' +
                 '<div id="popupNoteArea" style="max-height:50vh;overflow-y:auto;">' + renderNoteTable() + '</div>' +
             '</div>' +
@@ -11748,13 +11743,13 @@ URL.revokeObjectURL(url);
 
         var refreshStr = errorDashboardLastRefresh ? '上次刷新：' + errorDashboardLastRefresh.toLocaleTimeString('zh-CN') : '';
 
-        // 热力渐变色（数字越大越红 → 越小越白，相同数量同色）
+        // 热力渐变色（越大越红 → 越小越绿，0为绿色）
         function heatColorByRank(rank, totalRanks, alpha) {
             alpha = alpha || 0.8;
             var ratio = totalRanks <= 1 ? 0 : rank / (totalRanks - 1);
-            var h = Math.round(ratio * 120);
-            var s = Math.round(85 - 45 * ratio);
-            var l = Math.round(48 + 37 * ratio);
+            var h = Math.round(120 * ratio); // 0(红)→60(橙黄)→120(绿)
+            var s = 85;
+            var l = Math.round(45 + 10 * ratio);
             return 'hsla(' + h + ', ' + s + '%, ' + l + '%, ' + alpha + ')';
         }
 
@@ -11799,15 +11794,13 @@ URL.revokeObjectURL(url);
             var showAll = (window['_ef_' + prefix] === true);
             var defaultN = 5;
             var visible = showAll ? list : list.slice(0, defaultN);
-            var isSmall = list.length <= defaultN;
             var html = '<button class="filter-btn' + (f[filterKey] === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.' + filterKey + '=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">' + allLabel + '</button>';
             visible.forEach(function(k) {
                 var cnt = statsMap[k] || 0;
                 var rank = rankInfo.rankMap[k] || 0;
-                var color = isSmall ? '#f1f5f9' : heatColorByRank(rank, rankInfo.totalRanks, 0.7);
-                var txtCol = isSmall ? '#5e6f8d' : 'white';
+                var color = heatColorByRank(rank, rankInfo.totalRanks, 0.7);
                 var isA = f[filterKey] === k;
-                var st = isA ? '' : ('background:' + color + ';color:' + txtCol + ';border-color:rgba(0,0,0,0.08);');
+                var st = isA ? '' : ('background:' + color + ';color:white;border-color:' + color + ';');
                 html += '<button class="filter-btn' + (isA ? ' active' : '') + '" style="' + st + '" onclick="errorDashboardFilter.' + filterKey + '=\'' + k.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(k) + ' (' + cnt + ')</button>';
             });
             if (list.length > defaultN) {
@@ -12191,18 +12184,21 @@ URL.revokeObjectURL(url);
                 textarea.oninput = function() { currentExamAnswers[parseInt(this.dataset.qidx)] = this.value; };
             });
             document.getElementById('submitExamBtn').onclick = async () => {
-                // 检查未作答题目
                 const questions = currentExamAnswers._questions || [];
                 const totalQ = questions.length;
                 const answered = Object.keys(currentExamAnswers).filter(k => k !== '_questions' && currentExamAnswers[k] !== undefined && currentExamAnswers[k] !== null && currentExamAnswers[k] !== '').length;
                 const unanswered = totalQ - answered;
-                let msg = '';
+                var msg = '';
                 if (unanswered > 0) {
                     msg = '⚠️ 还有 ' + unanswered + ' 道题未作答（共 ' + totalQ + ' 题）\n\n';
                 }
                 msg += '确认提交答卷吗？提交后将无法修改。';
-                var ok = await showConfirm(msg, unanswered > 0 ? '⚠️' : '📝');
-                if (!ok) return;
+                try {
+                    var ok = await showConfirm(msg, unanswered > 0 ? '⚠️' : '📝');
+                    if (!ok) return;
+                } catch(e) {
+                    if (!confirm(msg)) return;
+                }
                 submitExam();
             };
             document.getElementById('cancelExamBtn').onclick = async () => {
