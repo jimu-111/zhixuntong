@@ -10974,6 +10974,24 @@ URL.revokeObjectURL(url);
     const ERROR_DASHBOARD_PAGE_SIZE = 30;
     let errorDashboardFilter = { period: 'day', site: 'all', category: 'all', reviewer: 'all' };
 
+    // 飞书API请求（自动处理CORS降级）
+    async function feishuApiFetch(url, options) {
+        options = options || {};
+        // 尝试直连
+        try {
+            var resp = await fetch(url, options);
+            if (resp.ok) return resp;
+        } catch(e) {}
+        // CORS代理降级
+        var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+        var proxyOpts = {
+            method: options.method || 'GET',
+            headers: options.headers || {}
+        };
+        if (options.body) proxyOpts.body = options.body;
+        return await fetch(proxyUrl, proxyOpts);
+    }
+
     function excelSerialToDate(serial) {
         var d = new Date((serial - 25569) * 86400 * 1000);
         return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -11003,10 +11021,11 @@ URL.revokeObjectURL(url);
         try { stored = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
         if (!stored || !stored.refresh_token) return null;
         try {
-            var resp = await fetch('https://open.feishu.cn/open-apis/authen/v1/refresh_access_token', {
+            var body = JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'refresh_token', refresh_token: stored.refresh_token });
+            var resp = await feishuApiFetch('https://open.feishu.cn/open-apis/authen/v1/refresh_access_token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'refresh_token', refresh_token: stored.refresh_token })
+                body: body
             });
             var data = await resp.json();
             if (data.code === 0 && data.data) {
@@ -11019,7 +11038,7 @@ URL.revokeObjectURL(url);
 
     async function fetchFeishuSheet(sheetId, token) {
         var url = 'https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/' + FEISHU_CONFIG.spreadsheetToken + '/values/' + sheetId + '?majorDimension=ROWS';
-        var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        var resp = await feishuApiFetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
         var data = await resp.json();
         if (data.code !== 0) throw new Error(data.msg || '请求失败');
         return (data.data && data.data.valueRange && data.data.valueRange.values) || [];
@@ -11804,10 +11823,11 @@ URL.revokeObjectURL(url);
         var oauthCode = initParams.get('code');
         if (oauthCode) {
             try {
-                var tokenResp = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
+                var formBody = 'app_id=' + encodeURIComponent(FEISHU_CONFIG.appId) + '&app_secret=' + encodeURIComponent(FEISHU_CONFIG.appSecret) + '&grant_type=authorization_code&code=' + encodeURIComponent(oauthCode);
+                var tokenResp = await feishuApiFetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'authorization_code', code: oauthCode })
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formBody
                 });
                 var tokenData = await tokenResp.json();
                 if (tokenData.code === 0 && tokenData.data) {
