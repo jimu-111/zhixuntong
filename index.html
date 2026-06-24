@@ -11698,7 +11698,7 @@ URL.revokeObjectURL(url);
         var html = '<div class="error-dashboard">' +
             '<div class="report-box" style="margin-bottom:20px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">' +
-                    '<div class="report-title" style="margin-bottom:0;padding-bottom:0;border:none;">📋 失误分析看板</div>' +
+                    '<div class="report-title" style="margin-bottom:0;padding-bottom:0;border:none;">📋 失误分析看板  <span style="font-size:0.7rem;color:#94a3b8;">① 数据概览</span></div>' +
                     '<div class="refresh-info">' +
                         '<span>' + refreshStr + '</span>' +
                         '<button onclick="refreshErrorDashboardData(true)" style="background:#2a5298;color:white;border:none;padding:6px 14px;border-radius:16px;cursor:pointer;font-size:0.75rem;">🔄 刷新</button>' +
@@ -11723,16 +11723,10 @@ URL.revokeObjectURL(url);
                         '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + (topReviewers || '<span style="color:#94a3b8;font-size:0.75rem;">-</span>') + '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div style="text-align:right;margin-bottom:12px;">' +
-                    '<button onclick="generateExamFromErrors()" style="background:#c0392b;color:white;border:none;padding:8px 20px;border-radius:20px;cursor:pointer;font-size:0.85rem;font-weight:600;">📝 按失误比例出卷（30题）</button>' +
-                '</div>' +
-                // 最优/最差5人模块（仅周度/月度显示）
-                (f.period === 'week' || f.period === 'month' ? (function() {
+                // ② 时间维度 + Top5人员画像（并排）
+                (function() {
                     var sortedReviewers = Object.entries(reviewerStats).sort(function(a, b) { return b[1] - a[1]; });
-                    if (sortedReviewers.length === 0) return '';
-                    var worst5 = sortedReviewers.slice(0, 5);
-                    var best5 = sortedReviewers.slice(-5).reverse();
-                    // 每个人对应的失误类别
+                    var top5People = sortedReviewers.slice(0, 5);
                     function getPersonCats(name) {
                         var cats = {};
                         filtered.forEach(function(e) {
@@ -11740,51 +11734,50 @@ URL.revokeObjectURL(url);
                         });
                         return Object.entries(cats).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
                     }
-                    function renderPersonRow(entry, i, total, isWorst) {
-                        var name = entry[0], count = entry[1];
-                        var rank = isWorst ? i : (total - 1 - i);
-                        var color = heatColorByRank(rank, total, 0.75);
-                        var cats = getPersonCats(name);
-                        var icon = isWorst ? (i === 0 ? '🔴' : i === 1 ? '🟠' : i === 2 ? '🟡' : '🟢') : (i === 0 ? '⭐' : i === 1 ? '🌟' : '✨');
-                        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:0.8rem;">' +
-                            '<span style="font-size:1rem;">' + icon + '</span>' +
-                            '<span style="font-weight:600;min-width:50px;background:' + color + ';color:white;padding:2px 8px;border-radius:8px;text-align:center;">' + escapeHtml(name) + '</span>' +
-                            '<span style="color:#5e6f8d;min-width:30px;">' + count + '次</span>' +
-                            '<span style="color:#94a3b8;font-size:0.7rem;flex:1;">' + (cats || '-') + '</span>' +
-                            '<button onclick="generatePrecisionExam(\'' + name.replace(/'/g, "\\'") + '\')" style="background:#c0392b;color:white;border:none;padding:4px 12px;border-radius:12px;cursor:pointer;font-size:0.7rem;">📝 精准出卷</button>' +
-                        '</div>';
+                    var personHtml = '';
+                    if (top5People.length > 0) {
+                        var rankInfo = buildRankMap(reviewerStats, top5People.map(function(e) { return e[0]; }));
+                        personHtml = top5People.map(function(entry, i) {
+                            var name = entry[0], count = entry[1];
+                            var color = heatColorByRank(rankInfo.rankMap[name], rankInfo.totalRanks, 0.7);
+                            var cats = getPersonCats(name);
+                            return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">' +
+                                '<span style="font-weight:600;background:' + color + ';color:white;padding:2px 8px;border-radius:8px;min-width:50px;text-align:center;">' + escapeHtml(name) + '</span>' +
+                                '<span style="color:#5e6f8d;">' + count + '次</span>' +
+                                '<span style="color:#94a3b8;font-size:0.68rem;flex:1;">' + (cats || '-') + '</span>' +
+                                '<button onclick="generatePrecisionExam(\'' + name.replace(/'/g, "\\'") + '\')" style="background:#2a5298;color:white;border:none;padding:3px 10px;border-radius:10px;cursor:pointer;font-size:0.68rem;">📝 出卷</button>' +
+                            '</div>';
+                        }).join('');
                     }
-                    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">' +
-                        '<div style="background:#fff5f5;border-radius:16px;padding:12px 16px;border:1px solid #fecaca;">' +
-                            '<div style="font-weight:700;color:#c0392b;margin-bottom:8px;font-size:0.85rem;">⚠️ 失误最多 TOP 5</div>' +
-                            worst5.map(function(e, i) { return renderPersonRow(e, i, 5, true); }).join('') +
-                            (worst5.length === 0 ? '<div style="color:#94a3b8;font-size:0.75rem;">暂无数据</div>' : '') +
+                    return '<div style="display:flex;gap:16px;margin-bottom:16px;">' +
+                        '<div class="report-box" style="flex:1;margin-bottom:0;">' +
+                            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">② ⏱️ 时间维度</div>' +
+                            '<div class="filter-bar">' +
+                                '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度</button>' +
+                                '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'week\';errorDashboardPage=1;renderErrorDashboardContent();">📊 周度</button>' +
+                                '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'month\';errorDashboardPage=1;renderErrorDashboardContent();">📈 月度</button>' +
+                                '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="showCustomDatePopup()">📆 自定义' + (f.period === 'custom' && f.customStart ? ' (' + formatShortDate(new Date(f.customStart)) + '~' + formatShortDate(new Date(f.customEnd)) + ')' : '') + '</button>' +
+                            '</div>' +
                         '</div>' +
-                        '<div style="background:#f0fdf4;border-radius:16px;padding:12px 16px;border:1px solid #bbf7d0;">' +
-                            '<div style="font-weight:700;color:#27ae60;margin-bottom:8px;font-size:0.85rem;">✅ 失误最少 TOP 5</div>' +
-                            best5.map(function(e, i) { return renderPersonRow(e, i, 5, false); }).join('') +
-                            (best5.length === 0 ? '<div style="color:#94a3b8;font-size:0.75rem;">暂无数据</div>' : '') +
+                        '<div class="report-box" style="flex:1;margin-bottom:0;">' +
+                            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">🎯 失误Top5人员画像</div>' +
+                            (personHtml || '<div style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</div>') +
                         '</div>' +
                     '</div>';
-                })() : '') +
+                })() +
             '</div>' +
-            // 筛选栏
+            // ③ 筛选栏
             '<div class="report-box" style="margin-bottom:16px;">' +
-                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;">⏱️ 时间维度</div>' +
-                '<div class="filter-bar">' +
-                    '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度</button>' +
-                    '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'week\';errorDashboardPage=1;renderErrorDashboardContent();">📊 周度</button>' +
-                    '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'month\';errorDashboardPage=1;renderErrorDashboardContent();">📈 月度</button>' +
-                    '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="showCustomDatePopup()">📆 自定义' + (f.period === 'custom' && f.customStart ? ' (' + formatShortDate(new Date(f.customStart)) + '~' + formatShortDate(new Date(f.customEnd)) + ')' : '') + '</button>' +
-                '</div>' +
-                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">📍 站点</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;font-size:0.85rem;">③ 🔍 筛选条件</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:8px 0 6px;font-size:0.8rem;">📍 站点</div>' +
                 '<div class="filter-bar">' + siteBtns + '</div>' +
-                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">🏷️ 失误类别</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:8px 0 6px;font-size:0.8rem;">🏷️ 失误类别</div>' +
                 '<div class="filter-bar">' + catBtns + '</div>' +
-                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">👤 初审人员</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:8px 0 6px;font-size:0.8rem;">👤 初审人员</div>' +
                 '<div class="filter-bar">' + reviewerBtns + '</div>' +
             '</div>' +
             // 数据表格
+            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">④ 📋 失误列表</div>' +
             '<div class="error-table-wrapper">' +
                 '<table class="error-table">' +
                     '<thead><tr><th>日期</th><th>站点</th><th>来源</th><th>失误类别</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead>' +
