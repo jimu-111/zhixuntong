@@ -11339,77 +11339,84 @@ URL.revokeObjectURL(url);
         overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); } };
     }
 
+    // 占比条热力色（越大越红）
+    function barHeatColor(pct) {
+        var ratio = pct / 100;
+        var h = Math.round(50 - 50 * ratio); // 0→50: red→yellow
+        var s = 85;
+        var l = 48 - 10 * ratio;
+        return 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
+    }
+    // 健康度色（低红→高绿，最低60分）
+    function healthBarColor(score) {
+        var ratio = (score - 60) / 40; // normalize 60-100 → 0-1
+        if (ratio < 0) ratio = 0; if (ratio > 1) ratio = 1;
+        var h = Math.round(120 * ratio); // 0(red) → 60(yellow) → 120(green)
+        var s = 80;
+        var l = 45 - 10 * ratio;
+        return 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
+    }
+
     function renderPersonPortraitPopup(name, filtered, allFiltered, total, title) {
-        // 健康度：对比全员平均，100分制
         var allPeople = {};
         allFiltered.forEach(function(e) { allPeople[e.reviewer] = (allPeople[e.reviewer] || 0) + 1; });
         var allCounts = Object.values(allPeople);
         var avgErrors = allCounts.length > 0 ? allCounts.reduce(function(a, b) { return a + b; }, 0) / allCounts.length : 0;
-        var health = Math.max(0, Math.round(100 - (total / Math.max(1, avgErrors)) * 50));
-        var healthColor = health >= 80 ? '#27ae60' : (health >= 60 ? '#f39c12' : '#c0392b');
+        var health = Math.max(60, Math.round(100 - (total / Math.max(1, avgErrors)) * 40));
+        var hColor = healthBarColor(health);
 
-        // 来源统计
+        // 失误来源 — 横向均分
         var sourceMap = {};
         filtered.forEach(function(e) { sourceMap[e.source] = (sourceMap[e.source] || 0) + 1; });
-        var sourceHtml = Object.entries(sourceMap).sort(function(a, b) { return b[1] - a[1]; }).map(function(p) {
+        var sources = Object.entries(sourceMap).sort(function(a, b) { return b[1] - a[1]; });
+        var sourceCols = sources.map(function(p) {
             var pct = Math.round(p[1] / total * 100);
-            return '<div style="margin:4px 0;"><span style="display:inline-block;width:60px;font-size:0.78rem;">' + p[0] + '</span><span style="display:inline-block;width:40px;font-size:0.75rem;color:#5e6f8d;">' + p[1] + '次</span><span style="display:inline-block;width:35px;font-size:0.7rem;color:#94a3b8;">' + pct + '%</span><div style="display:inline-block;width:120px;height:10px;background:#eef2f6;border-radius:5px;vertical-align:middle;"><div style="width:' + pct + '%;height:100%;background:#2a5298;border-radius:5px;"></div></div></div>';
+            return '<div style="flex:1;text-align:center;padding:8px;"><div style="font-size:1.2rem;font-weight:700;">' + p[1] + '</div><div style="font-size:0.7rem;color:#5e6f8d;">' + p[0] + '</div><div style="height:6px;background:#eef2f6;border-radius:3px;margin-top:4px;"><div style="width:' + pct + '%;height:100%;background:' + barHeatColor(pct) + ';border-radius:3px;"></div></div><div style="font-size:0.65rem;color:#94a3b8;">' + pct + '%</div></div>';
         }).join('');
 
-        // 类别统计+聚合
-        var catMap = {}, noteGroups = {};
+        // 失误详细聚合（同detail跨类别合并）
+        var detailGroups = {};
         filtered.forEach(function(e) {
-            catMap[e.category] = (catMap[e.category] || 0) + 1;
-            var key = e.category + '|||' + e.note;
-            if (!noteGroups[key]) noteGroups[key] = { cat: e.category, note: e.note, count: 0, qcCodes: [], sources: {} };
-            noteGroups[key].count++;
-            if (e.qcCode && noteGroups[key].qcCodes.indexOf(e.qcCode) < 0) noteGroups[key].qcCodes.push(e.qcCode);
-            noteGroups[key].sources[e.source] = (noteGroups[key].sources[e.source] || 0) + 1;
+            var noteKey = (e.note || '').trim() || '(无备注)';
+            if (!detailGroups[noteKey]) detailGroups[noteKey] = { note: noteKey, count: 0, cats: {}, qcCodes: [], sources: {} };
+            detailGroups[noteKey].count++;
+            detailGroups[noteKey].cats[e.category] = (detailGroups[noteKey].cats[e.category] || 0) + 1;
+            if (e.qcCode && detailGroups[noteKey].qcCodes.indexOf(e.qcCode) < 0) detailGroups[noteKey].qcCodes.push(e.qcCode);
+            detailGroups[noteKey].sources[e.source] = (detailGroups[noteKey].sources[e.source] || 0) + 1;
         });
-        var allNotes = Object.values(noteGroups).sort(function(a, b) { return b.count - a.count; });
-        var notePageSize = 15, notePage = 1, noteTotalPages = Math.ceil(allNotes.length / notePageSize) || 1;
+        var allDetails = Object.values(detailGroups).sort(function(a, b) { return b.count - a.count; });
+        var notePageSize = 15, noteTotalPages = Math.ceil(allDetails.length / notePageSize) || 1;
 
         function renderNotePage(pg) {
             var start = (pg - 1) * notePageSize;
-            var pData = allNotes.slice(start, start + notePageSize);
-            var rows = pData.length === 0 ? '<tr><td colspan="6" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>' :
+            var pData = allDetails.slice(start, start + notePageSize);
+            var rows = pData.length === 0 ? '<tr><td colspan="5" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>' :
                 pData.map(function(g) {
-                    var catPct = Math.round(g.count / total * 100);
-                    var srcTag = (Object.keys(g.sources)[0] || '初审') === '初审' ? 'cs' : ((Object.keys(g.sources)[0] || '') === '抽检' ? 'cj' : 'qa');
-                    return '<tr><td style="text-align:center;">' + escapeHtml(g.cat) + '</td><td style="text-align:center;">' + g.count + '</td><td style="text-align:center;">' + catPct + '%</td><td style="text-align:center;"><div style="display:inline-block;width:60px;height:8px;background:#eef2f6;border-radius:4px;vertical-align:middle;"><div style="width:' + catPct + '%;height:100%;background:#2a5298;border-radius:4px;"></div></div></td><td style="text-align:center;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(g.note) + '">' + escapeHtml(g.note) + (g.count > 1 ? ' <b style="color:#c0392b;">×' + g.count + '</b>' : '') + '</td><td style="text-align:center;font-size:0.7rem;">' + g.qcCodes.join(', ') + '</td></tr>';
+                    var pct = Math.round(g.count / total * 100);
+                    var catsStr = Object.entries(g.cats).sort(function(a, b) { return b[1] - a[1]; }).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
+                    return '<tr><td style="text-align:center;">' + g.count + '</td><td style="text-align:center;">' + pct + '%</td><td style="text-align:center;"><div style="display:inline-block;width:80px;height:8px;background:#eef2f6;border-radius:4px;vertical-align:middle;"><div style="width:' + pct + '%;height:100%;background:' + barHeatColor(pct) + ';border-radius:4px;"></div></div></td><td style="text-align:center;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(g.note) + '">' + escapeHtml(g.note) + (g.count > 1 ? ' <b style="color:#c0392b;">×' + g.count + '</b>' : '') + '</td><td style="text-align:center;font-size:0.68rem;color:#5e6f8d;max-width:120px;">' + escapeHtml(catsStr) + '</td><td style="text-align:center;font-size:0.7rem;">' + g.qcCodes.join(', ') + '</td></tr>';
                 }).join('');
             var pag = noteTotalPages > 1 ? '<div class="pagination"><button ' + (pg <= 1 ? 'disabled' : '') + ' onclick="window._noteGoPage(' + (pg - 1) + ')">上一页</button><span>' + pg + '/' + noteTotalPages + '</span><button ' + (pg >= noteTotalPages ? 'disabled' : '') + ' onclick="window._noteGoPage(' + (pg + 1) + ')">下一页</button></div>' : '';
-            return '<table class="error-table" style="width:100%;"><thead><tr><th>失误类别</th><th>个数</th><th>占比</th><th>占比条</th><th>失误详细</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pag;
+            return '<table class="error-table" style="width:100%;"><thead><tr><th>个数</th><th>占比</th><th>占比条</th><th>失误详细</th><th>关联类别</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pag;
         }
 
         var overlay = document.createElement('div');
         overlay.className = 'modal-overlay'; overlay.style.zIndex = '2000';
         overlay.innerHTML = '<div class="modal-container" style="max-width:1100px;">' +
-            '<div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">' +
+            '<div class="modal-header" style="background:linear-gradient(90deg,' + hColor + ', #1f3a6b);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">' +
                 '<span>' + title + ' （' + total + '条）</span>' +
-                '<span style="font-size:1rem;font-weight:700;color:' + healthColor + ';">❤️ 健康度 ' + health + '分</span>' +
+                '<span style="font-size:1.1rem;font-weight:700;background:rgba(255,255,255,0.2);padding:4px 16px;border-radius:20px;">❤️ 健康度 ' + health + '分</span>' +
                 '<button class="modal-close-btn" id="popupCloseBtn">✕</button>' +
             '</div>' +
             '<div class="modal-body">' +
-                // 模块1：失误来源
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📊 失误来源</div>' +
-                '<div style="background:#f8fafc;padding:12px;border-radius:12px;margin-bottom:12px;">' + (sourceHtml || '<span style="color:#94a3b8;">-</span>') + '</div>' +
-                // 模块2：失误类别分布
-                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">🏷️ 失误类别分布</div>' +
-                '<div style="background:#f8fafc;padding:12px;border-radius:12px;margin-bottom:12px;">' +
-                    Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8).map(function(p) {
-                        var cp = Math.round(p[1] / total * 100);
-                        return '<div style="margin:2px 0;font-size:0.78rem;"><span style="display:inline-block;width:80px;">' + escapeHtml(p[0]) + '</span><span style="display:inline-block;width:35px;">' + p[1] + '</span><span style="display:inline-block;width:35px;color:#94a3b8;">' + cp + '%</span><div style="display:inline-block;width:100px;height:8px;background:#eef2f6;border-radius:4px;vertical-align:middle;"><div style="width:' + cp + '%;height:100%;background:#2a5298;border-radius:4px;"></div></div></div>';
-                    }).join('') +
-                '</div>' +
-                // 模块3：失误详细表格
-                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📋 失误详细</div>' +
+                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:14px;display:flex;gap:8px;">' + (sourceCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📋 失误详细分析</div>' +
                 '<div id="popupNoteArea">' + renderNotePage(1) + '</div>' +
             '</div>' +
         '</div>';
         document.body.appendChild(overlay);
         window._noteGoPage = function(pg) {
-            notePage = pg;
             var a = document.getElementById('popupNoteArea');
             if (a) a.innerHTML = renderNotePage(pg);
         };
@@ -11824,6 +11831,7 @@ URL.revokeObjectURL(url);
                     }
                     // 智能按钮：0-5无操作, 6-10出卷, 10-15学习+考试, 15+培训+学习+考试
                     function getPersonActions(name, count) {
+                        if (f.period !== 'week') return '';
                         var btns = '';
                         if (count >= 6) btns += '<button onclick="generatePrecisionExam(\'' + name.replace(/'/g, "\\'") + '\')" style="background:#c0392b;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;white-space:nowrap;">📝 出卷</button>';
                         if (count >= 10) btns += '<button style="background:#e67e22;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;white-space:nowrap;margin-left:3px;" title="学习地图推送（待配置）">🗺️ 学习</button>';
