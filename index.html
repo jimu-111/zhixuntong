@@ -11782,7 +11782,7 @@ URL.revokeObjectURL(url);
                     var ratio3 = totalRanks <= 1 ? 0 : Math.round(rank / (totalRanks - 1) * 2);
                     color = 'hsl(' + [0, 30, 50][ratio3] + ', 55%, 72%)';
                 }
-                var txtCol = '#5e6f8d';
+                var txtCol = '#2d3748';
                 return '<span class="clickable-tag" onclick="showErrorDetailPopup(\'' + typePrefix + '\',\'' + k.replace(/'/g, "\\'") + '\')" style="background:' + color + ';color:' + txtCol + ';padding:2px 10px;border-radius:10px;font-size:0.72rem;margin:2px;cursor:pointer;display:inline-block;font-weight:500;" title="点击查看详情">' + escapeHtml(k) + ' (' + stats[k] + ')</span>';
             }).join('');
             if (list.length > defaultShow) {
@@ -11820,7 +11820,7 @@ URL.revokeObjectURL(url);
                         color = 'hsl(' + h3 + ', 55%, 72%)';
                     }
                 }
-                var txtCol = '#5e6f8d';
+                var txtCol = '#2d3748';
                 var isA = f[filterKey] === k;
                 var st = isA ? '' : ('background:' + color + ';color:' + txtCol + ';border-color:' + color + ';');
                 html += '<button class="filter-btn' + (isA ? ' active' : '') + '" style="' + st + '" onclick="errorDashboardFilter.' + filterKey + '=\'' + k.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(k) + ' (' + cnt + ')</button>';
