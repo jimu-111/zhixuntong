@@ -11223,13 +11223,13 @@ URL.revokeObjectURL(url);
 
     function getErrorDashboardToken() {
         var stored = null;
-        try { stored = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
+        try { stored = JSON.parse(localStorage.getItem('feishu_token') || 'null'); } catch(e) {}
         if (stored && stored.expiresAt > Date.now() + 60000) return stored.access_token;
         return null;
     }
 
     function saveErrorDashboardToken(token, refreshToken, expiresIn) {
-        localStorage.setItem('_feishu_token', JSON.stringify({
+        localStorage.setItem('feishu_token', JSON.stringify({
             access_token: token,
             refresh_token: refreshToken,
             expiresAt: Date.now() + expiresIn * 1000
@@ -11238,7 +11238,7 @@ URL.revokeObjectURL(url);
 
     async function feishuRefreshToken() {
         var stored = null;
-        try { stored = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
+        try { stored = JSON.parse(localStorage.getItem('feishu_token') || 'null'); } catch(e) {}
         if (!stored || !stored.refresh_token) return null;
         try {
             var body = JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'refresh_token', refresh_token: stored.refresh_token });
@@ -11275,7 +11275,7 @@ URL.revokeObjectURL(url);
             if (!token) {
                 // 需要重新授权 — 检查是否是已授权但token过期
                 var storedToken = null;
-                try { storedToken = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
+                try { storedToken = JSON.parse(localStorage.getItem('feishu_token') || 'null'); } catch(e) {}
                 var reason = '';
                 if (!storedToken) reason = '<p style="color:#94a3b8;font-size:0.8rem;">未检测到已保存的授权，请点击下方按钮授权</p>';
                 else if (storedToken.expiresAt <= Date.now()) reason = '<p style="color:#e67e22;font-size:0.8rem;">授权已过期，请重新授权</p>';
@@ -11813,16 +11813,29 @@ URL.revokeObjectURL(url);
         var labels = { reds: '红色预警（>10次）', yellows: '黄色预警（6-10次）', greens: '绿色正常（0-5次）' };
         var overlay = document.createElement('div');
         overlay.className = 'modal-overlay'; overlay.style.zIndex = '2000';
+        var showExamBtns = (errorDashboardFilter.period === 'week' || errorDashboardFilter.period === 'month' || errorDashboardFilter.period === 'custom');
         var rows = people.map(function(p){
-            return '<tr><td style=\"text-align:center;\">' + (icons[key]||'') + '</td><td style=\"text-align:center;\"><span class=\"clickable-tag light-person-name\" data-name=\"' + escapeHtml(p[0]) + '\" style=\"cursor:pointer;font-weight:600;\">' + escapeHtml(p[0]) + '</span></td><td style=\"text-align:center;\">' + p[1] + '次</td></tr>';
+            var examBtn = '';
+            if (showExamBtns && p[1] >= 6) {
+                examBtn = '<button class=\"light-exam-btn\" data-name=\"' + escapeHtml(p[0]) + '\" style=\"background:#c0392b;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;\">📝 出卷</button>';
+            }
+            return '<tr><td style=\"text-align:center;\">' + (icons[key]||'') + '</td><td style=\"text-align:center;\"><span class=\"clickable-tag light-person-name\" data-name=\"' + escapeHtml(p[0]) + '\" style=\"cursor:pointer;font-weight:600;\">' + escapeHtml(p[0]) + '</span></td><td style=\"text-align:center;\">' + p[1] + '次</td><td style=\"text-align:center;\">' + examBtn + '</td></tr>';
         }).join('');
-        overlay.innerHTML = '<div class="modal-container" style="max-width:450px;">' +
+        overlay.innerHTML = '<div class="modal-container" style="max-width:550px;">' +
             '<div class="modal-header">' + (labels[key]||'按灯详情') + '（' + people.length + '人）<button class="modal-close-btn" id="lightClose">✕</button></div>' +
-            '<div class="modal-body"><table class="error-table" style="width:100%;"><thead><tr><th>灯</th><th>姓名</th><th>失误</th></tr></thead><tbody>' + (rows || '<tr><td colspan=\"3\" style=\"padding:20px;color:#94a3b8;\">暂无人员</td></tr>') + '</tbody></table></div>' +
+            '<div class="modal-body"><table class="error-table" style="width:100%;"><thead><tr><th>灯</th><th>姓名</th><th>失误</th><th>操作</th></tr></thead><tbody>' + (rows || '<tr><td colspan=\"4\" style=\"padding:20px;color:#94a3b8;\">暂无人员</td></tr>') + '</tbody></table></div>' +
         '</div>';
         document.body.appendChild(overlay);
         overlay.querySelector('#lightClose').onclick = function(){overlay.remove();};
         overlay.onclick = function(e){if(e.target===overlay)overlay.remove();};
+        overlay.querySelectorAll('.light-exam-btn').forEach(function(el){
+            el.addEventListener('click', function(e){
+                e.stopPropagation();
+                var n = this.dataset.name;
+                overlay.remove();
+                generatePrecisionExam(n);
+            });
+        });
         overlay.querySelectorAll('.light-person-name').forEach(function(el){
             el.addEventListener('click', function(){
                 var n = this.dataset.name;
@@ -12037,11 +12050,13 @@ URL.revokeObjectURL(url);
                             var cats = getPersonCats(name);
                             var sites = getPersonSites(name);
                             var actions = getPersonActions(name, count);
+                            var hasActions = actions && actions.trim().length > 0;
                             return '<tr class="portrait-row" style="border-bottom:1px solid #f1f5f9;">' +
-                                '<td style="text-align:center;padding:4px 2px;width:18%;"><span class="clickable-tag" onclick="showErrorDetailPopup(\'reviewer\',\'' + name.replace(/'/g, "\\'") + '\')" style="font-weight:600;background:' + color + ';color:#2d3748;padding:2px 6px;border-radius:8px;cursor:pointer;font-size:0.7rem;" title="点击查看详情">' + escapeHtml(name) + '</span></td>' +
-                                '<td style="text-align:center;padding:4px 2px;width:12%;font-size:0.68rem;color:#5e6f8d;">' + escapeHtml(sites) + '</td>' +
-                                '<td style="text-align:center;padding:4px 2px;width:15%;font-size:0.7rem;color:#5e6f8d;">' + count + '次</td>' +
-                                '<td style="text-align:center;padding:4px 4px;width:55%;font-size:0.7rem;color:#5e6f8d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (cats || '-') + '</td>' +
+                                '<td style="text-align:center;padding:6px 4px;"><span class="clickable-tag" onclick="showErrorDetailPopup(\'reviewer\',\'' + name.replace(/'/g, "\\'") + '\')" style="font-weight:600;background:' + color + ';color:#2d3748;padding:2px 6px;border-radius:8px;cursor:pointer;font-size:0.72rem;" title="点击查看详情">' + escapeHtml(name) + '</span></td>' +
+                                '<td style="text-align:center;padding:6px 4px;font-size:0.72rem;color:#5e6f8d;">' + escapeHtml(sites) + '</td>' +
+                                '<td style="text-align:center;padding:6px 4px;font-size:0.72rem;color:#5e6f8d;">' + count + '次</td>' +
+                                '<td style="text-align:center;padding:6px 4px;font-size:0.72rem;color:#5e6f8d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (cats || '-') + '</td>' +
+                                (hasActions ? '<td style="text-align:center;padding:6px 4px;white-space:nowrap;">' + actions + '</td>' : '') +
                             '</tr>';
                         }).join('');
                     }
@@ -12053,36 +12068,36 @@ URL.revokeObjectURL(url);
                     window._portraitExpandLink = expandLink;
                     return '<div class="report-box" style="margin-bottom:16px;">' +
                             '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">② 🔍 筛选看板</div>' +
-                            '<div style="display:flex;gap:20px;flex-wrap:wrap;">' +
-                                '<div style="flex:1;min-width:280px;"><span style="font-size:0.8rem;font-weight:600;color:#1f3a6b;">⏱️ 时间</span><div class="filter-bar" style="gap:6px;">' +
+                            '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+                                '<div style="flex:1;min-width:250px;"><span style="font-size:0.8rem;font-weight:600;color:#1f3a6b;">⏱️ 时间</span><div class="filter-bar" style="gap:4px;">' +
                                     '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度</button>' +
                                     '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="showPeriodPopup(\'week\')">📊 周度</button>' +
                                     '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="showPeriodPopup(\'month\')">📈 月度</button>' +
-                                    '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="showCustomDatePopup()">📆 自定义' + (f.period === 'custom' && f.customStart ? ' ' + formatShortDate(new Date(f.customStart)) + '~' + formatShortDate(new Date(f.customEnd)) : '') + '</button>' +
+                                    '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="showCustomDatePopup()">📆 自定义</button>' +
                                 '</div></div>' +
-                                '<div style="flex:1;min-width:280px;"><span style="font-size:0.8rem;font-weight:600;color:#1f3a6b;">📍 站点</span><div class="filter-bar" style="gap:6px;">' + siteBtns + '</div></div>' +
+                                '<div style="flex:1;min-width:250px;"><span style="font-size:0.8rem;font-weight:600;color:#1f3a6b;">📍 站点</span><div class="filter-bar" style="gap:4px;">' + siteBtns + '</div></div>' +
+                                '<div style="flex:1;min-width:250px;"><span style="font-size:0.8rem;font-weight:600;color:#1f3a6b;">🚦 按灯预警</span><div style="margin-top:4px;">' + (function() {
+                                    var allPeople2 = sortedReviewers;
+                                    var reds = allPeople2.filter(function(e){return e[1]>10;});
+                                    var yellows = allPeople2.filter(function(e){return e[1]>=6&&e[1]<=10;});
+                                    var greens = allPeople2.filter(function(e){return e[1]<=5;});
+                                    window._lightData = { reds: reds, yellows: yellows, greens: greens };
+                                    function lightBtn(list,color,bg,icon,key) {
+                                        if (list.length === 0) return '<span style=\"display:inline-block;padding:4px 10px;margin:2px;border-radius:8px;font-size:0.7rem;background:#f1f5f9;color:#94a3b8;\">'+icon+' 0人</span>';
+                                        return '<span onclick=\"showLightPeoplePopup(\''+key+'\')\" style=\"display:inline-block;padding:4px 10px;margin:2px;border-radius:8px;font-size:0.7rem;background:'+bg+';color:'+color+';cursor:pointer;font-weight:600;\">'+icon+' '+list.length+'人</span>';
+                                    }
+                                    return lightBtn(reds,'#991b1b','#fecaca','🔴','reds') + lightBtn(yellows,'#854d0e','#fef08a','🟡','yellows') + lightBtn(greens,'#166534','#d4edda','🟢','greens');
+                                })() + '</div></div>' +
                             '</div>' +
                         '</div>';
                 })() +
             '</div>' +
             // 统计概览
             '<div class="report-box" style="margin-bottom:16px;">' +
-                '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">' +
-                    '<div class="stat-mini"><div class="val">' + totalErrors + '</div><div class="lbl">📋 筛选结果</div></div>' +
-                    '<div class="stat-mini"><div class="val">' + allCategories.length + '</div><div class="lbl">🏷️ 失误类别</div></div>' +
-                    '<div class="stat-mini"><div class="val">' + allReviewers.length + '</div><div class="lbl">👤 涉及人员</div></div>' +
-                    '<div class="stat-mini"><div class="val" style="font-size:1rem;">🚦</div><div class="lbl">按灯预警</div><div style="margin-top:4px;">' + (function() {
-                        var allPeople2 = sortedReviewers;
-                        var reds = allPeople2.filter(function(e){return e[1]>10;});
-                        var yellows = allPeople2.filter(function(e){return e[1]>=6&&e[1]<=10;});
-                        var greens = allPeople2.filter(function(e){return e[1]<=5;});
-                        window._lightData = { reds: reds, yellows: yellows, greens: greens };
-                        function lightBtn(list,color,bg,icon,key) {
-                            if (list.length === 0) return '<span style=\"display:inline-block;padding:3px 8px;margin:2px;border-radius:8px;font-size:0.65rem;background:#f1f5f9;color:#94a3b8;\">'+icon+' 0人</span>';
-                            return '<span onclick=\"showLightPeoplePopup(\''+key+'\')\" style=\"display:inline-block;padding:3px 8px;margin:2px;border-radius:8px;font-size:0.65rem;background:'+bg+';color:'+color+';cursor:pointer;font-weight:600;\">'+icon+' '+list.length+'人</span>';
-                        }
-                        return lightBtn(reds,'#991b1b','#fecaca','🔴','reds') + lightBtn(yellows,'#854d0e','#fef08a','🟡','yellows') + lightBtn(greens,'#166534','#d4edda','🟢','greens');
-                    })() + '</div></div>' +
+                '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">' +
+                    '<div class="stat-mini"><div class="lbl" style="font-size:0.9rem;font-weight:700;margin-bottom:2px;">📋 失误数</div><div class="val" style="font-size:2.2rem;">' + totalErrors + '</div></div>' +
+                    '<div class="stat-mini"><div class="lbl" style="font-size:0.9rem;font-weight:700;margin-bottom:2px;">🏷️ 失误类别</div><div class="val" style="font-size:2.2rem;">' + allCategories.length + '</div></div>' +
+                    '<div class="stat-mini"><div class="lbl" style="font-size:0.9rem;font-weight:700;margin-bottom:2px;">👤 涉及初审</div><div class="val" style="font-size:2.2rem;">' + allReviewers.length + '</div></div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
                     '<div style="background:#fafcff;border-radius:16px;padding:12px 16px;border:1px solid #eef2f6;">' +
@@ -12693,7 +12708,7 @@ URL.revokeObjectURL(url);
 
         // 监听storage变化：如果其他标签页保存了飞书token，自动感知
         window.addEventListener('storage', function(e) {
-            if (e.key === '_feishu_token' && e.newValue && currentNav === 'errorDashboard') {
+            if (e.key === 'feishu_token' && e.newValue && currentNav === 'errorDashboard') {
                 refreshErrorDashboardData(true);
             }
         });
