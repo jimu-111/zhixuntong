@@ -11186,6 +11186,88 @@ URL.revokeObjectURL(url);
         return Object.keys(revs).sort(function(a, b) { return revs[b] - revs[a]; });
     }
 
+    // 点击Top标签弹窗查看详情
+    function showErrorDetailPopup(type, value) {
+        var filtered;
+        if (type === 'category') {
+            filtered = errorDashboardData.filter(function(e) { return e.category === value; });
+        } else if (type === 'reviewer') {
+            filtered = errorDashboardData.filter(function(e) { return e.reviewer === value; });
+        } else {
+            filtered = errorDashboardData;
+        }
+        var total = filtered.length;
+        var title = type === 'category' ? '🏷️ 失误类别：' + value : '👤 初审人员：' + value;
+
+        // 统计
+        var siteMap = {}, catMap = {}, revMap = {};
+        filtered.forEach(function(e) {
+            siteMap[e.site] = (siteMap[e.site] || 0) + 1;
+            catMap[e.category] = (catMap[e.category] || 0) + 1;
+            revMap[e.reviewer] = (revMap[e.reviewer] || 0) + 1;
+        });
+        var siteStats = Object.entries(siteMap).sort(function(a, b) { return b[1] - a[1]; }).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
+        var catStats = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
+        var revStats = Object.entries(revMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
+
+        // 分页
+        var popupPage = 1;
+        var pageSize = 20;
+        var totalPages = Math.ceil(total / pageSize) || 1;
+
+        var popupPage = 1;
+        var pageSize = 20;
+        var totalPages = Math.ceil(total / pageSize) || 1;
+
+        function renderPopupTable(pg) {
+            var start = (pg - 1) * pageSize;
+            var pageData = filtered.slice(start, start + pageSize);
+            var rows = '';
+            if (pageData.length === 0) {
+                rows = '<tr><td colspan="6" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>';
+            } else {
+                pageData.forEach(function(e) {
+                    var srcTag = e.source === '初审' ? 'cs' : (e.source === '抽检' ? 'cj' : 'qa');
+                    rows += '<tr><td>' + e.dateStr + '</td><td>' + escapeHtml(e.site) + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + escapeHtml(e.reviewer) + '</td><td style="text-align:left;max-width:280px;">' + escapeHtml(e.note) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
+                });
+            }
+            var pagHtml = '';
+            if (totalPages > 1) {
+                pagHtml = '<div class="pagination" style="margin-top:8px;">' +
+                    '<button ' + (pg <= 1 ? 'disabled' : '') + ' onclick="window._popupGoPage(' + (pg - 1) + ')">上一页</button>' +
+                    '<span style="font-size:0.8rem;color:#5e6f8d;">' + pg + '/' + totalPages + '</span>' +
+                    '<button ' + (pg >= totalPages ? 'disabled' : '') + ' onclick="window._popupGoPage(' + (pg + 1) + ')">下一页</button>' +
+                '</div>';
+            }
+            return '<table class="error-table"><thead><tr><th>日期</th><th>站点</th><th>来源</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pagHtml;
+        }
+
+        // 挂载全局分页回调
+        window._popupGoPage = function(pg) {
+            popupPage = pg;
+            var area = document.getElementById('popupTableArea');
+            if (area) area.innerHTML = renderPopupTable(pg);
+        };
+
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '2000';
+        overlay.innerHTML = '<div class="modal-container" style="max-width:1000px;">' +
+            '<div class="modal-header">' + title + ' <span style="font-weight:400;font-size:0.85rem;">（共' + total + '条）</span><button class="modal-close-btn" id="popupCloseBtn">✕</button></div>' +
+            '<div class="modal-body">' +
+                '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.78rem;background:#f8fafc;padding:10px;border-radius:12px;">' +
+                    '<span>📍 站点分布：' + (siteStats || '-') + '</span>' +
+                    (type === 'reviewer' ? '<span>🏷️ 类别分布：' + (catStats || '-') + '</span>' : '<span>👤 人员分布：' + (revStats || '-') + '</span>') +
+                '</div>' +
+                '<div id="popupTableArea">' + renderPopupTable(1) + '</div>' +
+            '</div>' +
+        '</div>';
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#popupCloseBtn').onclick = function() { overlay.remove(); window._popupGoPage = null; };
+        overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); window._popupGoPage = null; } };
+    }
+
     function renderErrorDashboard() {
         document.getElementById('mainContent').innerHTML = '<div class="error-dashboard"><div style="text-align:center;padding:60px;color:#94a3b8;">⏳ 正在加载飞书数据...</div></div>';
         refreshErrorDashboardData();
@@ -11243,26 +11325,51 @@ URL.revokeObjectURL(url);
 
         var refreshStr = errorDashboardLastRefresh ? '上次刷新：' + errorDashboardLastRefresh.toLocaleTimeString('zh-CN') : '';
 
-        // 统计卡片
-        var topCats = allCategories.slice(0, 5).map(function(c) { return '<span style="background:#f1f5f9;padding:2px 8px;border-radius:8px;font-size:0.7rem;margin:2px;">' + escapeHtml(c) + '(' + catStats[c] + ')</span>'; }).join('');
-        var topReviewers = allReviewers.slice(0, 5).map(function(r) { return '<span style="background:#f1f5f9;padding:2px 8px;border-radius:8px;font-size:0.7rem;margin:2px;">' + escapeHtml(r) + '(' + reviewerStats[r] + ')</span>'; }).join('');
+        // 热力渐变色（红→橙→黄）
+        function heatColor(idx, total, alpha) {
+            alpha = alpha || 0.75;
+            var ratio = total <= 1 ? 0 : idx / (total - 1);
+            var h = Math.round(50 - 50 * ratio); // 红0→橙25→黄50
+            return 'hsla(' + h + ', 85%, 50%, ' + alpha + ')';
+        }
+        // Top类别标签（最多10个，红橙黄渐变，可点击弹窗）
+        var topCats = allCategories.slice(0, 10).map(function(c, i) {
+            var color = heatColor(i, Math.min(allCategories.length, 10), 0.8);
+            return '<span class="clickable-tag" onclick="showErrorDetailPopup(\'category\',\'' + c.replace(/'/g, "\\'") + '\')" style="background:' + color + ';color:white;padding:2px 10px;border-radius:10px;font-size:0.72rem;margin:2px;cursor:pointer;display:inline-block;font-weight:500;" title="点击查看详情">' + escapeHtml(c) + ' (' + catStats[c] + ')</span>';
+        }).join('');
+        var topReviewers = allReviewers.slice(0, 10).map(function(r, i) {
+            var color = heatColor(i, Math.min(allReviewers.length, 10), 0.8);
+            return '<span class="clickable-tag" onclick="showErrorDetailPopup(\'reviewer\',\'' + r.replace(/'/g, "\\'") + '\')" style="background:' + color + ';color:white;padding:2px 10px;border-radius:10px;font-size:0.72rem;margin:2px;cursor:pointer;display:inline-block;font-weight:500;" title="点击查看详情">' + escapeHtml(r) + ' (' + reviewerStats[r] + ')</span>';
+        }).join('');
 
-        // 站点筛选项
-        var siteBtns = '<button class="filter-btn' + (f.site === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.site=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部站点</button>';
-        allSites.forEach(function(s) {
-            siteBtns += '<button class="filter-btn' + (f.site === s ? ' active' : '') + '" onclick="errorDashboardFilter.site=\'' + s + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(s) + '</button>';
+        // 站点筛选项（渐变底色）
+        var siteBtns = '<button class="filter-btn' + (f.site === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.site=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">📍 全部</button>';
+        allSites.forEach(function(s, i) {
+            var sc = siteStats[s] || 0;
+            var color = heatColor(i, allSites.length, 0.7);
+            var isActive = f.site === s;
+            var style = isActive ? '' : ('background:' + color + ';color:white;border-color:' + color + ';');
+            siteBtns += '<button class="filter-btn' + (isActive ? ' active' : '') + '" style="' + style + '" onclick="errorDashboardFilter.site=\'' + s + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(s) + ' (' + sc + ')</button>';
         });
 
-        // 类别筛选项
-        var catBtns = '<button class="filter-btn' + (f.category === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.category=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部类别</button>';
-        allCategories.forEach(function(c) {
-            catBtns += '<button class="filter-btn' + (f.category === c ? ' active' : '') + '" onclick="errorDashboardFilter.category=\'' + c.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(c) + '</button>';
+        // 类别筛选项（渐变底色）
+        var catBtns = '<button class="filter-btn' + (f.category === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.category=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">🏷️ 全部</button>';
+        allCategories.forEach(function(c, i) {
+            var cc = catStats[c] || 0;
+            var color = heatColor(i, allCategories.length, 0.7);
+            var isActive = f.category === c;
+            var style = isActive ? '' : ('background:' + color + ';color:white;border-color:' + color + ';');
+            catBtns += '<button class="filter-btn' + (isActive ? ' active' : '') + '" style="' + style + '" onclick="errorDashboardFilter.category=\'' + c.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(c) + ' (' + cc + ')</button>';
         });
 
-        // 人员筛选项
-        var reviewerBtns = '<button class="filter-btn' + (f.reviewer === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.reviewer=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部人员</button>';
-        allReviewers.forEach(function(r) {
-            reviewerBtns += '<button class="filter-btn' + (f.reviewer === r ? ' active' : '') + '" onclick="errorDashboardFilter.reviewer=\'' + r.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(r) + '</button>';
+        // 人员筛选项（渐变底色）
+        var reviewerBtns = '<button class="filter-btn' + (f.reviewer === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.reviewer=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">👤 全部</button>';
+        allReviewers.forEach(function(r, i) {
+            var rc = reviewerStats[r] || 0;
+            var color = heatColor(i, allReviewers.length, 0.7);
+            var isActive = f.reviewer === r;
+            var style = isActive ? '' : ('background:' + color + ';color:white;border-color:' + color + ';');
+            reviewerBtns += '<button class="filter-btn' + (isActive ? ' active' : '') + '" style="' + style + '" onclick="errorDashboardFilter.reviewer=\'' + r.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(r) + ' (' + rc + ')</button>';
         });
 
         var html = '<div class="error-dashboard">' +
