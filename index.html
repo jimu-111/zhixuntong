@@ -11368,11 +11368,13 @@ URL.revokeObjectURL(url);
         var hColor = healthBarColor(health);
 
         // 失误来源 + 站点分布 — 横向均分
-        var sourceMap = {};
+        var sourceMap = {}, siteMap = {};
         filtered.forEach(function(e) {
             sourceMap[e.source] = (sourceMap[e.source] || 0) + 1;
+            if (e.site) siteMap[e.site] = (siteMap[e.site] || 0) + 1;
         });
         var sources = Object.entries(sourceMap).sort(function(a, b) { return b[1] - a[1]; });
+        var sites = Object.entries(siteMap).sort(function(a, b) { return b[1] - a[1]; });
         function renderDistCols(entries, totalCount) {
             return entries.map(function(p) {
                 var pct = Math.round(p[1] / totalCount * 100);
@@ -11381,6 +11383,7 @@ URL.revokeObjectURL(url);
             }).join('');
         }
         var sourceCols = renderDistCols(sources, total);
+        var siteCols = renderDistCols(sites, total);
 
         // 按类别→详细聚合（类别合并行）
         var catGroups = {};
@@ -11448,7 +11451,9 @@ URL.revokeObjectURL(url);
             '</div>' +
             '<div class="modal-body">' +
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📊 失误来源</div>' +
-                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:14px;display:flex;gap:8px;">' + (sourceCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
+                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:6px;display:flex;gap:8px;">' + (sourceCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;margin-top:8px;">📍 站点分布</div>' +
+                '<div style="background:#f8fafc;padding:8px;border-radius:12px;margin-bottom:14px;display:flex;gap:8px;">' + (siteCols || '<span style="color:#94a3b8;">-</span>') + '</div>' +
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;">📋 失误详细分析</div>' +
                 '<div id="popupNoteArea" style="max-height:50vh;overflow-y:auto;">' + renderNoteTable() + '</div>' +
             '</div>' +
@@ -11867,18 +11872,16 @@ URL.revokeObjectURL(url);
                     // 智能按钮：0-5无操作, 6-10出卷, 10-15学习+考试, 15+培训+学习+考试
                     function getPersonActions(name, count) {
                         var btns = '';
-                        if (errorDashboardFilter.period === 'week') {
+                        if (errorDashboardFilter.period === 'week' || errorDashboardFilter.period === 'custom') {
                             if (count >= 6) btns += '<button onclick="generatePrecisionExam(\'' + name.replace(/'/g, "\\'") + '\')" style="background:#c0392b;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;white-space:nowrap;">📝 出卷</button>';
                             if (count >= 10) btns += '<button style="background:#e67e22;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;white-space:nowrap;margin-left:3px;" title="学习地图推送（待配置）">🗺️ 学习</button>';
                             if (count >= 15) btns += '<button style="background:#8e44ad;color:white;border:none;padding:2px 8px;border-radius:8px;cursor:pointer;font-size:0.65rem;white-space:nowrap;margin-left:3px;" title="培训推送（待配置）">📖 培训</button>';
-                        } else {
-                            btns += '<span style="font-size:0.6rem;color:#94a3b8;">[' + errorDashboardFilter.period + ']</span>';
                         }
                         return btns;
                     }
                     var allPeople = sortedReviewers;
                     var expandPeople = (window['_expand_people'] === true);
-                    var showPeople = expandPeople ? allPeople : allPeople.slice(0, 5);
+                    var showPeople = expandPeople ? allPeople : allPeople.slice(0, 10);
                     var personRankInfo = buildRankMap(reviewerStats, allPeople.map(function(e) { return e[0]; }));
                     var personHtml = '';
                     if (showPeople.length > 0) {
@@ -11900,7 +11903,7 @@ URL.revokeObjectURL(url);
                         }).join('');
                     }
                     var expandLink = '';
-                    if (allPeople.length > 5) {
+                    if (allPeople.length > 10) {
                         expandLink = '<div style="text-align:center;margin-top:6px;"><span onclick="window[\'_expand_people\']=' + (!expandPeople) + ';renderErrorDashboardContent();" style="color:#2a5298;cursor:pointer;font-size:0.72rem;text-decoration:underline;">' + (expandPeople ? '收起▲' : '展开全部(' + allPeople.length + '人)▼') + '</span></div>';
                     }
                     return '<div style="display:flex;gap:16px;margin-bottom:16px;">' +
@@ -11921,7 +11924,7 @@ URL.revokeObjectURL(url);
                             '<div class="filter-bar">' + reviewerBtns + '</div>' +
                         '</div>' +
                         '<div class="report-box" style="flex:1;margin-bottom:0;">' +
-                            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;font-size:0.85rem;">🎯 失误人员画像 <span style="font-weight:400;font-size:0.65rem;color:#94a3b8;">[' + errorDashboardFilter.period + ']</span></div>' +
+                            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;font-size:0.85rem;">🎯 失误人员画像</div>' +
                             (personHtml || '<div style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</div>') +
                             expandLink +
                         '</div>' +
