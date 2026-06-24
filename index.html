@@ -272,6 +272,30 @@
         .custom-toast.error { border-left: 4px solid #c0392b; color: #7d2020; }
         .custom-toast.warning { border-left: 4px solid #f39c12; color: #7d5e10; }
         .custom-toast.info { border-left: 4px solid #2a5298; color: #1f3a6b; }
+        /* 失误分析看板 */
+        .error-dashboard .stat-mini { background:white; border-radius:16px; padding:14px 18px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.04); border:1px solid #eef2f6; }
+        .error-dashboard .stat-mini .val { font-size:1.8rem; font-weight:700; color:#1f3a6b; }
+        .error-dashboard .stat-mini .lbl { font-size:0.7rem; color:#5e6f8d; margin-top:2px; }
+        .error-dashboard .filter-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+        .error-dashboard .filter-btn { padding:8px 16px; border-radius:20px; border:1px solid #cbd5e1; background:white; cursor:pointer; font-size:0.8rem; font-weight:500; transition:all 0.15s; }
+        .error-dashboard .filter-btn.active { background:#1f3a6b; color:white; border-color:#1f3a6b; }
+        .error-dashboard .error-table-wrapper { background:white; border-radius:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.04); border:1px solid #eef2f6; }
+        .error-dashboard .error-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .error-dashboard .error-table th { background:#f8fafc; font-weight:600; padding:10px 10px; text-align:center; border-bottom:2px solid #eef2f6; white-space:nowrap; }
+        .error-dashboard .error-table td { padding:8px 10px; text-align:center; border-bottom:1px solid #f1f5f9; }
+        .error-dashboard .error-table tbody tr:hover { background:#f8fafd; }
+        .error-dashboard .source-tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:500; }
+        .error-dashboard .source-tag.cs { background:#e8f5e9; color:#2e7d32; }
+        .error-dashboard .source-tag.cj { background:#fff3e0; color:#e67e22; }
+        .error-dashboard .source-tag.qa { background:#e3f2fd; color:#1565c0; }
+        .error-dashboard .refresh-info { font-size:0.7rem; color:#94a3b8; display:flex; align-items:center; gap:6px; }
+        .error-dashboard .sheet-status { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+        .error-dashboard .sheet-dot { display:flex; align-items:center; gap:4px; font-size:0.7rem; color:#5e6f8d; }
+        .error-dashboard .sheet-dot .dot { width:8px; height:8px; border-radius:50%; }
+        .error-dashboard .sheet-dot .dot.ok { background:#27ae60; }
+        .error-dashboard .sheet-dot .dot.err { background:#c0392b; }
+        .error-dashboard .pagination { display:flex; gap:6px; align-items:center; justify-content:center; padding:12px; }
+        .error-dashboard .pagination button { background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.8rem; }
     </style>
 </head>
 <body>
@@ -295,6 +319,7 @@
             <button class="nav-btn" data-nav="questionBank" style="font-size:0.8rem;opacity:0.75;">📝 题库</button>
             <button class="nav-btn" data-nav="examSystem" style="font-size:0.8rem;opacity:0.75;">📋 考试系统</button>
             <button class="nav-btn" data-nav="knowledgeBase" style="font-size:0.8rem;opacity:0.75;">📖 知识库</button>
+            <button class="nav-btn" data-nav="errorDashboard" style="font-size:0.8rem;opacity:0.75;">📋 失误分析看板</button>
         </div>
         <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,0.08);">
             <span id="syncStatus" style="display:block;text-align:center;font-size:0.75rem;color:#4fc3f7;padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);" title="云端同步状态">☁️ 同步中</span>
@@ -7636,6 +7661,7 @@ URL.revokeObjectURL(url);
         else if (nav === 'errorAnalysis') renderErrorAnalysis();
         else if (nav === 'examSystem') renderExamSystem();
         else if (nav === 'knowledgeBase') renderKnowledgeBase();
+        else if (nav === 'errorDashboard') renderErrorDashboard();
     }
 
     // ==================== 5大模块空容器 ====================
@@ -10928,6 +10954,336 @@ URL.revokeObjectURL(url);
         renderKnowledgeBase();
     }
 
+    // ==================== 失误分析看板 ====================
+    const FEISHU_CONFIG = {
+        appId: 'cli_aab1fa4e87bbdbd3',
+        appSecret: '1uLKmOkzQpoac6Ixw3Qhsb6KR1gCrcTn',
+        spreadsheetToken: 'EdI0sn3qkh7H6wtkhcpcxrTnnDf',
+        sheets: [
+            { id: '4054dd', name: '初审失误登记', source: '初审', colDate: 0, colSite: 1, colQcCode: 3, colCategory: 5, colReviewer: 7, colNote: 8 },
+            { id: 'mEiT35', name: '抽检失误登记', source: '抽检', colDate: 0, colSite: 1, colQcCode: 3, colCategory: 9, colReviewer: 5, colNote: 10 },
+            { id: 'LIfICo', name: 'QA失误登记', source: 'QA', colDate: 0, colSite: 1, colQcCode: 2, colCategory: 4, colReviewer: 5, colNote: 6 }
+        ]
+    };
+
+    let errorDashboardData = [];
+    let errorDashboardRefreshing = false;
+    let errorDashboardLastRefresh = null;
+    let errorDashboardSheetStatus = {};
+    let errorDashboardPage = 1;
+    const ERROR_DASHBOARD_PAGE_SIZE = 30;
+    let errorDashboardFilter = { period: 'day', site: 'all', category: 'all', reviewer: 'all' };
+
+    function excelSerialToDate(serial) {
+        var d = new Date((serial - 25569) * 86400 * 1000);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function formatDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function getErrorDashboardToken() {
+        var stored = null;
+        try { stored = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
+        if (stored && stored.expiresAt > Date.now() + 60000) return stored.access_token;
+        return null;
+    }
+
+    function saveErrorDashboardToken(token, refreshToken, expiresIn) {
+        localStorage.setItem('_feishu_token', JSON.stringify({
+            access_token: token,
+            refresh_token: refreshToken,
+            expiresAt: Date.now() + expiresIn * 1000
+        }));
+    }
+
+    async function feishuRefreshToken() {
+        var stored = null;
+        try { stored = JSON.parse(localStorage.getItem('_feishu_token') || 'null'); } catch(e) {}
+        if (!stored || !stored.refresh_token) return null;
+        try {
+            var resp = await fetch('https://open.feishu.cn/open-apis/authen/v1/refresh_access_token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'refresh_token', refresh_token: stored.refresh_token })
+            });
+            var data = await resp.json();
+            if (data.code === 0 && data.data) {
+                saveErrorDashboardToken(data.data.access_token, data.data.refresh_token, data.data.expires_in);
+                return data.data.access_token;
+            }
+        } catch(e) {}
+        return null;
+    }
+
+    async function fetchFeishuSheet(sheetId, token) {
+        var url = 'https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/' + FEISHU_CONFIG.spreadsheetToken + '/values/' + sheetId + '?majorDimension=ROWS';
+        var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+        var data = await resp.json();
+        if (data.code !== 0) throw new Error(data.msg || '请求失败');
+        return (data.data && data.data.valueRange && data.data.valueRange.values) || [];
+    }
+
+    async function refreshErrorDashboardData(force) {
+        if (errorDashboardRefreshing) return;
+        errorDashboardRefreshing = true;
+        var allErrors = [];
+        var status = {};
+        try {
+            var token = getErrorDashboardToken();
+            if (!token) token = await feishuRefreshToken();
+            if (!token) {
+                // 需要重新授权
+                document.getElementById('mainContent').innerHTML = '<div class="panorama-card" style="text-align:center;padding:40px;"><div style="font-size:1.5rem;margin-bottom:16px;">🔐 需要飞书授权</div><p style="color:#5e6f8d;margin-bottom:16px;">请点击下方链接授权后，将跳转网址发送给管理员</p><a href="https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=' + FEISHU_CONFIG.appId + '&redirect_uri=https%3A%2F%2Fjimu-111.github.io%2Fyouxuetang%2F&scope=sheets:spreadsheet:readonly%20drive:drive:readonly%20wiki:wiki:readonly" target="_blank" style="display:inline-block;background:#1f3a6b;color:white;padding:12px 24px;border-radius:30px;text-decoration:none;">🔗 飞书授权</a></div>';
+                errorDashboardRefreshing = false;
+                return;
+            }
+            for (var i = 0; i < FEISHU_CONFIG.sheets.length; i++) {
+                var sh = FEISHU_CONFIG.sheets[i];
+                try {
+                    var rows = await fetchFeishuSheet(sh.id, token);
+                    status[sh.name] = { ok: true, count: Math.max(0, rows.length - 2) };
+                    for (var r = 2; r < rows.length; r++) {
+                        var row = rows[r];
+                        if (!row || row.length === 0) continue;
+                        var dateVal = row[sh.colDate];
+                        if (dateVal === null || dateVal === undefined || dateVal === '日期') continue;
+                        var dateObj;
+                        if (typeof dateVal === 'number') {
+                            dateObj = excelSerialToDate(dateVal);
+                        } else {
+                            dateObj = new Date(dateVal);
+                            if (isNaN(dateObj.getTime())) continue;
+                        }
+                        var category = (row[sh.colCategory] || '').toString().trim();
+                        var reviewer = (row[sh.colReviewer] || '').toString().trim();
+                        var note = (row[sh.colNote] || '').toString().trim();
+                        var site = (row[sh.colSite] || '').toString().trim();
+                        var qcCode = (row[sh.colQcCode] || '').toString().trim();
+                        if (!category && !note) continue;
+                        allErrors.push({
+                            date: dateObj,
+                            dateStr: formatDate(dateObj),
+                            site: site,
+                            qcCode: qcCode,
+                            category: category || '-',
+                            reviewer: reviewer || '-',
+                            note: note || '-',
+                            source: sh.source,
+                            sourceSheet: sh.name
+                        });
+                    }
+                } catch(e) {
+                    status[sh.name] = { ok: false, count: 0, error: e.message };
+                }
+            }
+            allErrors.sort(function(a, b) { return b.date - a.date; });
+            errorDashboardData = allErrors;
+            errorDashboardSheetStatus = status;
+            errorDashboardLastRefresh = new Date();
+            errorDashboardPage = 1;
+            renderErrorDashboardContent();
+        } catch(e) {
+            errorDashboardSheetStatus = { '_global': { ok: false, error: e.message } };
+            errorDashboardLastRefresh = new Date();
+            renderErrorDashboardContent();
+        }
+        errorDashboardRefreshing = false;
+    }
+
+    function getFilteredErrors() {
+        var data = errorDashboardData;
+        var f = errorDashboardFilter;
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // 时间段筛选
+        if (f.period === 'day') {
+            data = data.filter(function(e) { return e.date.getTime() === today.getTime(); });
+        } else if (f.period === 'week') {
+            var dayOfWeek = today.getDay();
+            var monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            var sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            data = data.filter(function(e) { return e.date >= monday && e.date <= sunday; });
+        } else if (f.period === 'month') {
+            // 上月27日到本月26日
+            var monthEnd, monthStart;
+            if (today.getDate() >= 27) {
+                monthStart = new Date(today.getFullYear(), today.getMonth(), 27);
+                monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 26);
+            } else {
+                monthStart = new Date(today.getFullYear(), today.getMonth() - 1, 27);
+                monthEnd = new Date(today.getFullYear(), today.getMonth(), 26);
+            }
+            data = data.filter(function(e) { return e.date >= monthStart && e.date <= monthEnd; });
+        }
+
+        // 站点筛选
+        if (f.site !== 'all') data = data.filter(function(e) { return e.site === f.site; });
+        // 类别筛选
+        if (f.category !== 'all') data = data.filter(function(e) { return e.category === f.category; });
+        // 人员筛选
+        if (f.reviewer !== 'all') data = data.filter(function(e) { return e.reviewer === f.reviewer; });
+
+        return data;
+    }
+
+    function getSiteList() {
+        var sites = {};
+        errorDashboardData.forEach(function(e) { if (e.site) sites[e.site] = (sites[e.site] || 0) + 1; });
+        return Object.keys(sites).sort(function(a, b) { return sites[b] - sites[a]; });
+    }
+
+    function getCategoryList(data) {
+        var cats = {};
+        data.forEach(function(e) { cats[e.category] = (cats[e.category] || 0) + 1; });
+        return Object.keys(cats).sort(function(a, b) { return cats[b] - cats[a]; });
+    }
+
+    function getReviewerList(data) {
+        var revs = {};
+        data.forEach(function(e) { revs[e.reviewer] = (revs[e.reviewer] || 0) + 1; });
+        return Object.keys(revs).sort(function(a, b) { return revs[b] - revs[a]; });
+    }
+
+    function renderErrorDashboard() {
+        document.getElementById('mainContent').innerHTML = '<div class="error-dashboard"><div style="text-align:center;padding:60px;color:#94a3b8;">⏳ 正在加载飞书数据...</div></div>';
+        refreshErrorDashboardData();
+    }
+
+    function renderErrorDashboardContent() {
+        var filtered = getFilteredErrors();
+        var allSites = getSiteList();
+        var allCategories = getCategoryList(filtered);
+        var allReviewers = getReviewerList(filtered);
+        var f = errorDashboardFilter;
+
+        // 统计
+        var totalErrors = filtered.length;
+        var siteStats = {};
+        var catStats = {};
+        var reviewerStats = {};
+        filtered.forEach(function(e) {
+            siteStats[e.site] = (siteStats[e.site] || 0) + 1;
+            catStats[e.category] = (catStats[e.category] || 0) + 1;
+            reviewerStats[e.reviewer] = (reviewerStats[e.reviewer] || 0) + 1;
+        });
+
+        // 分页
+        var totalPages = Math.ceil(totalErrors / ERROR_DASHBOARD_PAGE_SIZE) || 1;
+        if (errorDashboardPage > totalPages) errorDashboardPage = totalPages;
+        var startIdx = (errorDashboardPage - 1) * ERROR_DASHBOARD_PAGE_SIZE;
+        var pageData = filtered.slice(startIdx, startIdx + ERROR_DASHBOARD_PAGE_SIZE);
+
+        // 表格行
+        var tableRows = '';
+        if (pageData.length === 0) {
+            tableRows = '<tr><td colspan="7" style="padding:30px;color:#94a3b8;">暂无匹配的失误记录</td></tr>';
+        } else {
+            pageData.forEach(function(e) {
+                var srcTag = e.source === '初审' ? 'cs' : (e.source === '抽检' ? 'cj' : 'qa');
+                tableRows += '<tr><td>' + e.dateStr + '</td><td>' + escapeHtml(e.site) + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + escapeHtml(e.category) + '</td><td>' + escapeHtml(e.reviewer) + '</td><td style="text-align:left;max-width:300px;font-size:0.78rem;">' + escapeHtml(e.note) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
+            });
+        }
+
+        // 分页按钮
+        var paginationHtml = '';
+        if (totalPages > 1) {
+            paginationHtml = '<div class="pagination"><button onclick="errorDashboardPage=1;renderErrorDashboardContent();" ' + (errorDashboardPage <= 1 ? 'disabled' : '') + '>首页</button><button onclick="errorDashboardPage--;renderErrorDashboardContent();" ' + (errorDashboardPage <= 1 ? 'disabled' : '') + '>上一页</button><span style="font-size:0.8rem;color:#5e6f8d;">第 ' + errorDashboardPage + '/' + totalPages + ' 页</span><button onclick="errorDashboardPage++;renderErrorDashboardContent();" ' + (errorDashboardPage >= totalPages ? 'disabled' : '') + '>下一页</button><button onclick="errorDashboardPage=' + totalPages + ';renderErrorDashboardContent();" ' + (errorDashboardPage >= totalPages ? 'disabled' : '') + '>末页</button></div>';
+        }
+
+        // 数据状态点
+        var statusDots = '';
+        FEISHU_CONFIG.sheets.forEach(function(sh) {
+            var st = errorDashboardSheetStatus[sh.name];
+            var cls = (st && st.ok) ? 'ok' : 'err';
+            var cnt = (st && st.count !== undefined) ? st.count : '?';
+            statusDots += '<div class="sheet-dot"><span class="dot ' + cls + '"></span>' + sh.name + '（' + cnt + '条）</div>';
+        });
+
+        var refreshStr = errorDashboardLastRefresh ? '上次刷新：' + errorDashboardLastRefresh.toLocaleTimeString('zh-CN') : '';
+
+        // 统计卡片
+        var topCats = allCategories.slice(0, 5).map(function(c) { return '<span style="background:#f1f5f9;padding:2px 8px;border-radius:8px;font-size:0.7rem;margin:2px;">' + escapeHtml(c) + '(' + catStats[c] + ')</span>'; }).join('');
+        var topReviewers = allReviewers.slice(0, 5).map(function(r) { return '<span style="background:#f1f5f9;padding:2px 8px;border-radius:8px;font-size:0.7rem;margin:2px;">' + escapeHtml(r) + '(' + reviewerStats[r] + ')</span>'; }).join('');
+
+        // 站点筛选项
+        var siteBtns = '<button class="filter-btn' + (f.site === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.site=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部站点</button>';
+        allSites.forEach(function(s) {
+            siteBtns += '<button class="filter-btn' + (f.site === s ? ' active' : '') + '" onclick="errorDashboardFilter.site=\'' + s + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(s) + '</button>';
+        });
+
+        // 类别筛选项
+        var catBtns = '<button class="filter-btn' + (f.category === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.category=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部类别</button>';
+        allCategories.forEach(function(c) {
+            catBtns += '<button class="filter-btn' + (f.category === c ? ' active' : '') + '" onclick="errorDashboardFilter.category=\'' + c.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(c) + '</button>';
+        });
+
+        // 人员筛选项
+        var reviewerBtns = '<button class="filter-btn' + (f.reviewer === 'all' ? ' active' : '') + '" onclick="errorDashboardFilter.reviewer=\'all\';errorDashboardPage=1;renderErrorDashboardContent();">全部人员</button>';
+        allReviewers.forEach(function(r) {
+            reviewerBtns += '<button class="filter-btn' + (f.reviewer === r ? ' active' : '') + '" onclick="errorDashboardFilter.reviewer=\'' + r.replace(/'/g, "\\'") + '\';errorDashboardPage=1;renderErrorDashboardContent();">' + escapeHtml(r) + '</button>';
+        });
+
+        var html = '<div class="error-dashboard">' +
+            '<div class="report-box" style="margin-bottom:20px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">' +
+                    '<div class="report-title" style="margin-bottom:0;padding-bottom:0;border:none;">📋 失误分析看板</div>' +
+                    '<div class="refresh-info">' +
+                        '<span>' + refreshStr + '</span>' +
+                        '<button onclick="refreshErrorDashboardData(true)" style="background:#2a5298;color:white;border:none;padding:6px 14px;border-radius:16px;cursor:pointer;font-size:0.75rem;">🔄 刷新</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="sheet-status">' + statusDots + '</div>' +
+                // 统计卡片
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">' +
+                    '<div class="stat-mini"><div class="val">' + totalErrors + '</div><div class="lbl">📋 筛选结果</div></div>' +
+                    '<div class="stat-mini"><div class="val">' + allCategories.length + '</div><div class="lbl">🏷️ 失误类别</div></div>' +
+                    '<div class="stat-mini"><div class="val">' + allReviewers.length + '</div><div class="lbl">👤 涉及人员</div></div>' +
+                    '<div class="stat-mini"><div class="val">' + errorDashboardData.length + '</div><div class="lbl">📊 总失误数</div></div>' +
+                '</div>' +
+                // Top 类别和人员
+                '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.8rem;">' +
+                    '<div style="flex:1;min-width:200px;"><strong>🏷️ Top 类别：</strong>' + (topCats || '-') + '</div>' +
+                    '<div style="flex:1;min-width:200px;"><strong>👤 Top 人员：</strong>' + (topReviewers || '-') + '</div>' +
+                '</div>' +
+            '</div>' +
+            // 筛选栏
+            '<div class="report-box" style="margin-bottom:16px;">' +
+                '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;">⏱️ 时间维度</div>' +
+                '<div class="filter-bar">' +
+                    '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度（今天）</button>' +
+                    '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'week\';errorDashboardPage=1;renderErrorDashboardContent();">📊 周度（周一~周日）</button>' +
+                    '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'month\';errorDashboardPage=1;renderErrorDashboardContent();">📈 月度（上月27~本月26）</button>' +
+                '</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">📍 站点</div>' +
+                '<div class="filter-bar">' + siteBtns + '</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">🏷️ 失误类别</div>' +
+                '<div class="filter-bar">' + catBtns + '</div>' +
+                '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">👤 初审人员</div>' +
+                '<div class="filter-bar">' + reviewerBtns + '</div>' +
+            '</div>' +
+            // 数据表格
+            '<div class="error-table-wrapper">' +
+                '<table class="error-table">' +
+                    '<thead><tr><th>日期</th><th>站点</th><th>来源</th><th>失误类别</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead>' +
+                    '<tbody>' + tableRows + '</tbody>' +
+                '</table>' +
+                paginationHtml +
+            '</div>' +
+        '</div>';
+
+        document.getElementById('mainContent').innerHTML = html;
+    }
+
+    // 每120分钟自动刷新
+    setInterval(function() {
+        if (currentNav === 'errorDashboard') refreshErrorDashboardData(true);
+    }, 7200000);
+
     // ==================== 考试系统模块 ====================
     const EXAM_HISTORY_KEY = 'examHistoryData';
     function getExamHistory() {
@@ -11435,15 +11791,34 @@ URL.revokeObjectURL(url);
     };
     try { Object.defineProperty(window, 'localStorage', { value: _lsProxy, writable: false, configurable: false }); } catch(e) {}
 
-    // 启动：先从云端拉数据，再初始化应用
-    document.querySelectorAll('.nav-btn[data-nav]').forEach(function(el) { el.addEventListener('click', function() { switchNav(el.dataset.nav); }); });
-    _syncPullAll().then(function(count) {
-        if (count > 0) { try { loadData(); } catch(e) {} }
+    // 启动：处理飞书OAuth回调 + 云端拉数据 + 初始化
+    (async function() {
         var initParams = new URLSearchParams(window.location.search);
-        var initExam = initParams.get('exam');
-        if (initExam) { startStandaloneExam(initExam); }
-        else { switchNav('newcomerTraining'); }
-    });
+        var oauthCode = initParams.get('code');
+        if (oauthCode) {
+            try {
+                var tokenResp = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret, grant_type: 'authorization_code', code: oauthCode })
+                });
+                var tokenData = await tokenResp.json();
+                if (tokenData.code === 0 && tokenData.data) {
+                    saveErrorDashboardToken(tokenData.data.access_token, tokenData.data.refresh_token, tokenData.data.expires_in);
+                    // 清除URL中的code参数
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            } catch(e) {}
+        }
+
+        document.querySelectorAll('.nav-btn[data-nav]').forEach(function(el) { el.addEventListener('click', function() { switchNav(el.dataset.nav); }); });
+        _syncPullAll().then(function(count) {
+            if (count > 0) { try { loadData(); } catch(e) {} }
+            var initExam = initParams.get('exam');
+            if (initExam) { startStandaloneExam(initExam); }
+            else { switchNav('newcomerTraining'); }
+        });
+    })();
     // 永久删除雍彬彬的数据 + 修正旧版名字（从localStorage清理）+ 迁移旧数据到扁平按周期存储
     (function() {
         try {
