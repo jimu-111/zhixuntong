@@ -11035,7 +11035,7 @@ URL.revokeObjectURL(url);
             if (!token) token = await feishuRefreshToken();
             if (!token) {
                 // 需要重新授权
-                document.getElementById('mainContent').innerHTML = '<div class="panorama-card" style="text-align:center;padding:40px;"><div style="font-size:1.5rem;margin-bottom:16px;">🔐 需要飞书授权</div><p style="color:#5e6f8d;margin-bottom:16px;">请点击下方链接授权后，将跳转网址发送给管理员</p><a href="https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=' + FEISHU_CONFIG.appId + '&redirect_uri=https%3A%2F%2Fjimu-111.github.io%2Fyouxuetang%2F&scope=sheets:spreadsheet:readonly%20drive:drive:readonly%20wiki:wiki:readonly" target="_blank" style="display:inline-block;background:#1f3a6b;color:white;padding:12px 24px;border-radius:30px;text-decoration:none;">🔗 飞书授权</a></div>';
+                document.getElementById('mainContent').innerHTML = '<div class="panorama-card" style="text-align:center;padding:40px;"><div style="font-size:1.5rem;margin-bottom:16px;">🔐 需要飞书授权</div><p style="color:#5e6f8d;margin-bottom:16px;">点击下方按钮，在飞书页面点授权后自动返回</p><a href="https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=' + FEISHU_CONFIG.appId + '&redirect_uri=https%3A%2F%2Fjimu-111.github.io%2Fyouxuetang%2F&scope=sheets:spreadsheet:readonly%20drive:drive:readonly%20wiki:wiki:readonly" style="display:inline-block;background:#1f3a6b;color:white;padding:12px 24px;border-radius:30px;text-decoration:none;">🔗 前往飞书授权</a></div>';
                 errorDashboardRefreshing = false;
                 return;
             }
@@ -11792,6 +11792,7 @@ URL.revokeObjectURL(url);
     try { Object.defineProperty(window, 'localStorage', { value: _lsProxy, writable: false, configurable: false }); } catch(e) {}
 
     // 启动：处理飞书OAuth回调 + 云端拉数据 + 初始化
+    var _initOauthDone = false;
     (async function() {
         var initParams = new URLSearchParams(window.location.search);
         var oauthCode = initParams.get('code');
@@ -11805,17 +11806,25 @@ URL.revokeObjectURL(url);
                 var tokenData = await tokenResp.json();
                 if (tokenData.code === 0 && tokenData.data) {
                     saveErrorDashboardToken(tokenData.data.access_token, tokenData.data.refresh_token, tokenData.data.expires_in);
-                    // 清除URL中的code参数
+                    _initOauthDone = true;
                     window.history.replaceState({}, '', window.location.pathname);
                 }
             } catch(e) {}
         }
+
+        // 监听storage变化：如果其他标签页保存了飞书token，自动感知
+        window.addEventListener('storage', function(e) {
+            if (e.key === '_feishu_token' && e.newValue && currentNav === 'errorDashboard') {
+                refreshErrorDashboardData(true);
+            }
+        });
 
         document.querySelectorAll('.nav-btn[data-nav]').forEach(function(el) { el.addEventListener('click', function() { switchNav(el.dataset.nav); }); });
         _syncPullAll().then(function(count) {
             if (count > 0) { try { loadData(); } catch(e) {} }
             var initExam = initParams.get('exam');
             if (initExam) { startStandaloneExam(initExam); }
+            else if (_initOauthDone) { switchNav('errorDashboard'); }
             else { switchNav('newcomerTraining'); }
         });
     })();
