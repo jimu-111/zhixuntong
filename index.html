@@ -10976,6 +10976,7 @@ URL.revokeObjectURL(url);
 
     // 飞书API请求 — 通过Supabase Edge Function代理（避免CORS）
     const FEISHU_PROXY_URL = 'https://zfxwnixlvdxawoylhgxj.supabase.co/functions/v1/feishu-proxy';
+    const FEISHU_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeHduaXhsdmR4YXdveWxoZ3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMDEyNzIsImV4cCI6MjA5Nzc3NzI3Mn0.aPfO4Ry_LzoOColCVx64JQPF-BWga-_J2fX9hg-E4G8';
     async function feishuApiFetch(url, options) {
         options = options || {};
         var proxyBody = {
@@ -10986,7 +10987,10 @@ URL.revokeObjectURL(url);
         if (options.body) proxyBody.body = options.body;
         var resp = await fetch(FEISHU_PROXY_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + FEISHU_SUPABASE_KEY
+            },
             body: JSON.stringify(proxyBody)
         });
         if (!resp.ok) throw new Error('代理请求失败: ' + resp.status);
