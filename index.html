@@ -10972,7 +10972,7 @@ URL.revokeObjectURL(url);
     let errorDashboardSheetStatus = {};
     let errorDashboardPage = 1;
     const ERROR_DASHBOARD_PAGE_SIZE = 30;
-    let errorDashboardFilter = { period: 'day', site: 'all', category: 'all', reviewer: 'all' };
+    let errorDashboardFilter = { period: 'day', site: 'all', category: 'all', reviewer: 'all', customStart: '', customEnd: '' };
 
     // 飞书API请求 — 通过Supabase Edge Function代理（原始body转发）
     const FEISHU_PROXY_URL = 'https://zfxwnixlvdxawoylhgxj.supabase.co/functions/v1/feishu-proxy';
@@ -11136,7 +11136,12 @@ URL.revokeObjectURL(url);
         var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         // 时间段筛选
-        if (f.period === 'day') {
+        if (f.period === 'custom' && f.customStart && f.customEnd) {
+            var cs = new Date(f.customStart);
+            var ce = new Date(f.customEnd);
+            ce.setHours(23, 59, 59, 999);
+            data = data.filter(function(e) { return e.date >= cs && e.date <= ce; });
+        } else if (f.period === 'day') {
             data = data.filter(function(e) { return e.date.getTime() === today.getTime(); });
         } else if (f.period === 'week') {
             var dayOfWeek = today.getDay();
@@ -11186,36 +11191,37 @@ URL.revokeObjectURL(url);
         return Object.keys(revs).sort(function(a, b) { return revs[b] - revs[a]; });
     }
 
-    // 点击Top标签弹窗查看详情
+    // 截断文本
+    function truncateText(text, maxLen) {
+        if (!text) return '-';
+        if (text.length <= maxLen) return escapeHtml(text);
+        return escapeHtml(text.substring(0, maxLen)) + '...';
+    }
+
+    // 点击Top标签弹窗查看详情（使用时间筛选后数据）
     function showErrorDetailPopup(type, value) {
+        // 基于当前时间筛选的数据
+        var timeFiltered = getFilteredErrors();
         var filtered;
         if (type === 'category') {
-            filtered = errorDashboardData.filter(function(e) { return e.category === value; });
+            filtered = timeFiltered.filter(function(e) { return e.category === value; });
         } else if (type === 'reviewer') {
-            filtered = errorDashboardData.filter(function(e) { return e.reviewer === value; });
+            filtered = timeFiltered.filter(function(e) { return e.reviewer === value; });
         } else {
-            filtered = errorDashboardData;
+            filtered = timeFiltered;
         }
         var total = filtered.length;
         var title = type === 'category' ? '🏷️ 失误类别：' + value : '👤 初审人员：' + value;
 
         // 统计
-        var siteMap = {}, catMap = {}, revMap = {};
+        var catMap = {}, revMap = {};
         filtered.forEach(function(e) {
-            siteMap[e.site] = (siteMap[e.site] || 0) + 1;
             catMap[e.category] = (catMap[e.category] || 0) + 1;
             revMap[e.reviewer] = (revMap[e.reviewer] || 0) + 1;
         });
-        var siteStats = Object.entries(siteMap).sort(function(a, b) { return b[1] - a[1]; }).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
         var catStats = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
         var revStats = Object.entries(revMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5).map(function(p) { return p[0] + '(' + p[1] + ')'; }).join(' / ');
 
-        // 分页
-        var popupPage = 1;
-        var pageSize = 20;
-        var totalPages = Math.ceil(total / pageSize) || 1;
-
-        var popupPage = 1;
         var pageSize = 20;
         var totalPages = Math.ceil(total / pageSize) || 1;
 
@@ -11224,11 +11230,12 @@ URL.revokeObjectURL(url);
             var pageData = filtered.slice(start, start + pageSize);
             var rows = '';
             if (pageData.length === 0) {
-                rows = '<tr><td colspan="6" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>';
+                rows = '<tr><td colspan="5" style="padding:20px;color:#94a3b8;">暂无记录</td></tr>';
             } else {
                 pageData.forEach(function(e) {
                     var srcTag = e.source === '初审' ? 'cs' : (e.source === '抽检' ? 'cj' : 'qa');
-                    rows += '<tr><td>' + e.dateStr + '</td><td>' + escapeHtml(e.site) + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + escapeHtml(e.reviewer) + '</td><td style="text-align:left;max-width:280px;">' + escapeHtml(e.note) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
+                    var reviewerWithSite = escapeHtml(e.reviewer) + ' <span style="color:#94a3b8;font-size:0.7rem;">(' + escapeHtml(e.site) + ')</span>';
+                    rows += '<tr><td>' + e.dateStr + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + reviewerWithSite + '</td><td style="text-align:left;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(e.note) + '">' + truncateText(e.note, 40) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
                 });
             }
             var pagHtml = '';
@@ -11239,12 +11246,10 @@ URL.revokeObjectURL(url);
                     '<button ' + (pg >= totalPages ? 'disabled' : '') + ' onclick="window._popupGoPage(' + (pg + 1) + ')">下一页</button>' +
                 '</div>';
             }
-            return '<table class="error-table"><thead><tr><th>日期</th><th>站点</th><th>来源</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pagHtml;
+            return '<table class="error-table"><thead><tr><th>日期</th><th>来源</th><th>初审人（站点）</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + rows + '</tbody></table>' + pagHtml;
         }
 
-        // 挂载全局分页回调
         window._popupGoPage = function(pg) {
-            popupPage = pg;
             var area = document.getElementById('popupTableArea');
             if (area) area.innerHTML = renderPopupTable(pg);
         };
@@ -11253,17 +11258,15 @@ URL.revokeObjectURL(url);
         overlay.className = 'modal-overlay';
         overlay.style.zIndex = '2000';
         overlay.innerHTML = '<div class="modal-container" style="max-width:1000px;">' +
-            '<div class="modal-header">' + title + ' <span style="font-weight:400;font-size:0.85rem;">（共' + total + '条）</span><button class="modal-close-btn" id="popupCloseBtn">✕</button></div>' +
+            '<div class="modal-header">' + title + ' <span style="font-weight:400;font-size:0.85rem;">（' + total + '条）</span><button class="modal-close-btn" id="popupCloseBtn">✕</button></div>' +
             '<div class="modal-body">' +
                 '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.78rem;background:#f8fafc;padding:10px;border-radius:12px;">' +
-                    '<span>📍 站点分布：' + (siteStats || '-') + '</span>' +
                     (type === 'reviewer' ? '<span>🏷️ 类别分布：' + (catStats || '-') + '</span>' : '<span>👤 人员分布：' + (revStats || '-') + '</span>') +
                 '</div>' +
                 '<div id="popupTableArea">' + renderPopupTable(1) + '</div>' +
             '</div>' +
         '</div>';
         document.body.appendChild(overlay);
-
         overlay.querySelector('#popupCloseBtn').onclick = function() { overlay.remove(); window._popupGoPage = null; };
         overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); window._popupGoPage = null; } };
     }
@@ -11403,9 +11406,13 @@ URL.revokeObjectURL(url);
             '<div class="report-box" style="margin-bottom:16px;">' +
                 '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;">⏱️ 时间维度</div>' +
                 '<div class="filter-bar">' +
-                    '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度（今天）</button>' +
-                    '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'week\';errorDashboardPage=1;renderErrorDashboardContent();">📊 周度（周一~周日）</button>' +
-                    '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'month\';errorDashboardPage=1;renderErrorDashboardContent();">📈 月度（上月27~本月26）</button>' +
+                    '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;renderErrorDashboardContent();">📅 日度</button>' +
+                    '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'week\';errorDashboardPage=1;renderErrorDashboardContent();">📊 周度</button>' +
+                    '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'month\';errorDashboardPage=1;renderErrorDashboardContent();">📈 月度</button>' +
+                    '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'custom\';errorDashboardPage=1;renderErrorDashboardContent();">📆 自定义</button>' +
+                    '<input type="date" class="date-input" value="' + (f.customStart || '') + '" onchange="errorDashboardFilter.customStart=this.value;errorDashboardFilter.period=\'custom\';errorDashboardPage=1;renderErrorDashboardContent();" style="width:130px;" title="开始日期">' +
+                    '<span style="color:#94a3b8;">至</span>' +
+                    '<input type="date" class="date-input" value="' + (f.customEnd || '') + '" onchange="errorDashboardFilter.customEnd=this.value;errorDashboardFilter.period=\'custom\';errorDashboardPage=1;renderErrorDashboardContent();" style="width:130px;" title="结束日期">' +
                 '</div>' +
                 '<div style="font-weight:700;color:#1f3a6b;margin:12px 0 8px;">📍 站点</div>' +
                 '<div class="filter-bar">' + siteBtns + '</div>' +
