@@ -11325,12 +11325,16 @@ URL.revokeObjectURL(url);
 
         var refreshStr = errorDashboardLastRefresh ? '上次刷新：' + errorDashboardLastRefresh.toLocaleTimeString('zh-CN') : '';
 
-        // 热力渐变色（红→橙→黄）
+        // 热力渐变色（数字越大越红 → 越小越白）
         function heatColor(idx, total, alpha) {
-            alpha = alpha || 0.75;
+            alpha = alpha || 0.8;
             var ratio = total <= 1 ? 0 : idx / (total - 1);
-            var h = Math.round(50 - 50 * ratio); // 红0→橙25→黄50
-            return 'hsla(' + h + ', 85%, 50%, ' + alpha + ')';
+            // hue: 0(红)→30(橙)→55(黄)→100(绿)→120(淡)
+            var h = Math.round(ratio * 120);
+            // saturation: 高饱和→低饱和, lightness: 适中→偏白
+            var s = Math.round(85 - 45 * ratio);
+            var l = Math.round(48 + 37 * ratio);
+            return 'hsla(' + h + ', ' + s + '%, ' + l + '%, ' + alpha + ')';
         }
         // Top类别标签（最多10个，红橙黄渐变，可点击弹窗）
         var topCats = allCategories.slice(0, 10).map(function(c, i) {
