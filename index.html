@@ -12080,8 +12080,11 @@ URL.revokeObjectURL(url);
                         return btns;
                     }
                     var allPeople = sortedReviewers;
-                    var expandPeople = (window['_expand_people'] === true);
-                    var showPeople = expandPeople ? allPeople : allPeople.slice(0, 10);
+                    var portraitPage = window._portraitPage || 1;
+                    var portraitPageSize = 20;
+                    var portraitTotalPages = Math.ceil(allPeople.length / portraitPageSize) || 1;
+                    if (portraitPage > portraitTotalPages) portraitPage = portraitTotalPages;
+                    var showPeople = allPeople.slice((portraitPage - 1) * portraitPageSize, portraitPage * portraitPageSize);
                     var personRankInfo = buildRankMap(reviewerStats, allPeople.map(function(e) { return e[0]; }));
                     var personHtml = '';
                     // 预检：是否有任何人需要E列
@@ -12102,18 +12105,22 @@ URL.revokeObjectURL(url);
                         // 根据是否有E列使用不同列宽
                         personHtml = rowsData.map(function(r) {
                             var lightIcon = r.count > 10 ? '🔴' : (r.count >= 6 ? '🟡' : '🟢');
+                            var nameWithSite = escapeHtml(r.name) + ' <span style="color:#94a3b8;font-size:0.65rem;">（' + escapeHtml(r.sites) + '）</span>';
                             return '<tr class="portrait-row" style="border-bottom:1px solid #f1f5f9;">' +
-                                '<td style="text-align:center;padding:6px 4px;white-space:nowrap;"><span style="font-size:0.7rem;">' + lightIcon + '</span> <span class="clickable-tag" onclick="showErrorDetailPopup(\'reviewer\',\'' + r.name.replace(/'/g, "\\'") + '\')" style="font-weight:600;background:' + r.color + ';color:#2d3748;padding:2px 6px;border-radius:8px;cursor:pointer;font-size:0.7rem;" title="点击查看详情">' + escapeHtml(r.name) + '</span></td>' +
-                                '<td style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#5e6f8d;white-space:nowrap;">' + escapeHtml(r.sites) + '</td>' +
-                                '<td style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#5e6f8d;white-space:nowrap;">' + r.count + '次</td>' +
-                                '<td style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#5e6f8d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:1px;" title="' + escapeHtml(r.cats || '-') + '">' + (r.cats || '-') + '</td>' +
-                                (hasAnyActions ? '<td style="text-align:center;padding:6px 4px;white-space:nowrap;"><div style="display:flex;gap:3px;justify-content:center;">' + (r.actions||'') + '</div></td>' : '') +
+                                '<td style="text-align:center;padding:6px 4px;"><span style="font-size:0.7rem;">' + lightIcon + '</span> <span class="clickable-tag" onclick="showErrorDetailPopup(\'reviewer\',\'' + r.name.replace(/'/g, "\\'") + '\')" style="font-weight:600;background:' + r.color + ';color:#2d3748;padding:2px 6px;border-radius:8px;cursor:pointer;font-size:0.7rem;" title="点击查看详情">' + nameWithSite + '</span></td>' +
+                                '<td style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#5e6f8d;">' + r.count + '次</td>' +
+                                '<td style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#5e6f8d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(r.cats || '-') + '">' + (r.cats || '-') + '</td>' +
+                                (hasAnyActions ? '<td style="text-align:center;padding:6px 4px;white-space:nowrap;">' + (r.actions||'') + '</td>' : '') +
                             '</tr>';
                         }).join('');
                     }
                     var expandLink = '';
-                    if (allPeople.length > 10) {
-                        expandLink = '<div style="text-align:center;margin-top:6px;"><span onclick="window[\'_expand_people\']=' + (!expandPeople) + ';renderErrorDashboardContent();" style="color:#2a5298;cursor:pointer;font-size:0.72rem;text-decoration:underline;">' + (expandPeople ? '收起▲' : '展开全部(' + allPeople.length + '人)▼') + '</span></div>';
+                    if (portraitTotalPages > 1) {
+                        expandLink = '<div class="pagination" style="margin-top:6px;">' +
+                            '<button ' + (portraitPage <= 1 ? 'disabled' : '') + ' onclick="window._portraitPage=' + (portraitPage - 1) + ';renderErrorDashboardContent();">上一页</button>' +
+                            '<span style="font-size:0.75rem;color:#5e6f8d;">' + portraitPage + '/' + portraitTotalPages + '</span>' +
+                            '<button ' + (portraitPage >= portraitTotalPages ? 'disabled' : '') + ' onclick="window._portraitPage=' + (portraitPage + 1) + ';renderErrorDashboardContent();">下一页</button>' +
+                        '</div>';
                     }
                     window._portraitHtml = personHtml;
                     window._portraitExpandLink = expandLink;
@@ -12225,11 +12232,11 @@ URL.revokeObjectURL(url);
                     '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;font-size:0.85rem;">🎯 初审画像</div>' +
                     '<input type="text" id="portraitSearch" placeholder="🔍 搜索..." oninput="searchPortrait(this.value)" style="width:100%;padding:5px 10px;border:1px solid #e2e8f0;border-radius:14px;font-size:0.72rem;margin-bottom:6px;">' +
                     '<div id="portraitSearchMsg" style="display:none;text-align:center;padding:12px;color:#94a3b8;font-size:0.75rem;"></div>' +
-                    '<div style="flex:1;overflow:auto;min-height:0;">' +
-                    '<table style="width:100%;table-layout:auto;border-collapse:collapse;">' +
-                    (window._portraitHtml || '<tr><td colspan="5" style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</td></tr>') +
-                    '</table>' +
-                    '</div><div style="margin-top:auto;padding-top:8px;">' + (window._portraitExpandLink || '') + '</div>' +
+                    '<div style="flex:1;min-height:0;">' +
+                    '<div style="overflow:hidden;"><table style="width:100%;table-layout:auto;border-collapse:collapse;">' +
+                    (window._portraitHtml || '<tr><td colspan="4" style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</td></tr>') +
+                    '</table></div>' +
+                    '<div style="margin-top:auto;padding-top:8px;">' + (window._portraitExpandLink || '') + '</div>' +
                 '</div>' +
             '</div>' +
         '</div>';
