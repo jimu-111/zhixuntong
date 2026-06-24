@@ -11961,8 +11961,9 @@ URL.revokeObjectURL(url);
                     if (allPeople.length > 10) {
                         expandLink = '<div style="text-align:center;margin-top:6px;"><span onclick="window[\'_expand_people\']=' + (!expandPeople) + ';renderErrorDashboardContent();" style="color:#2a5298;cursor:pointer;font-size:0.72rem;text-decoration:underline;">' + (expandPeople ? '收起▲' : '展开全部(' + allPeople.length + '人)▼') + '</span></div>';
                     }
-                    return '<div style="display:flex;gap:16px;margin-bottom:16px;">' +
-                        '<div class="report-box" style="flex:1;margin-bottom:0;">' +
+                    window._portraitHtml = personHtml;
+                    window._portraitExpandLink = expandLink;
+                    return '<div class="report-box" style="margin-bottom:16px;">' +
                             '<div style="font-weight:700;color:#1f3a6b;margin-bottom:10px;font-size:0.85rem;">② 🔍 筛选看板</div>' +
                             '<div style="font-weight:700;color:#1f3a6b;margin:8px 0 6px;font-size:0.75rem;">⏱️ 时间</div>' +
                             '<div class="filter-bar">' +
@@ -11973,9 +11974,7 @@ URL.revokeObjectURL(url);
                             '</div>' +
                             '<div style="font-weight:700;color:#1f3a6b;margin:8px 0 6px;font-size:0.75rem;">📍 站点</div>' +
                             '<div class="filter-bar">' + siteBtns + '</div>' +
-                        '</div>' +
-                        '<div class="report-box" style="flex:1;margin-bottom:0;">' +
-                            // 按灯模块（仅周度，画像上方）
+                            // 按灯模块（仅周度）
                             (f.period === 'week' ? (function() {
                                 var lightPeople = sortedReviewers.filter(function(e) { return e[1] >= 6; });
                                 function lightColor(count) {
@@ -11983,7 +11982,7 @@ URL.revokeObjectURL(url);
                                     if (count >= 10) return { color: '#fed7aa', text: '#9a3412', label: '🟠', tag: '10-14' };
                                     return { color: '#fef08a', text: '#854d0e', label: '🟡', tag: '6-9' };
                                 }
-                                return '<div style="background:#fffbeb;border-radius:10px;padding:8px 10px;margin-bottom:8px;border:1px solid #fde68a;">' +
+                                return '<div style="background:#fffbeb;border-radius:10px;padding:8px 10px;margin-top:10px;border:1px solid #fde68a;">' +
                                     '<div style="font-weight:700;color:#92400e;margin-bottom:4px;font-size:0.75rem;">🚦 按灯预警</div>' +
                                     lightPeople.map(function(entry) {
                                         var name = entry[0], count = entry[1];
@@ -11992,13 +11991,7 @@ URL.revokeObjectURL(url);
                                     }).join('') +
                                 '</div>';
                             })() : '') +
-                            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;font-size:0.85rem;">🎯 失误人员画像</div>' +
-                            '<input type="text" id="portraitSearch" placeholder="🔍 搜索人员..." oninput="var v=this.value.toLowerCase();var items=this.parentElement.querySelectorAll(\'.portrait-row\');items.forEach(function(el){el.style.display=v?(el.textContent.toLowerCase().indexOf(v)>=0?\'\':\'none\'):\'\';});" style="width:100%;padding:5px 10px;border:1px solid #e2e8f0;border-radius:14px;font-size:0.72rem;margin-bottom:6px;">' +
-                            '<div style="max-height:300px;overflow-y:auto;">' +
-                            (personHtml || '<div style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</div>') +
-                            '</div>' + expandLink +
-                        '</div>' +
-                    '</div>';
+                        '</div>';
                 })() +
             '</div>' +
             // 统计概览
@@ -12019,14 +12012,52 @@ URL.revokeObjectURL(url);
                     '</div>' +
                 '</div>' +
             '</div>' +
-            // 数据表格
-            '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">📋 失误列表</div>' +
-            '<div class="error-table-wrapper">' +
-                '<table class="error-table">' +
-                    '<thead><tr><th>日期</th><th>站点</th><th>来源</th><th>失误类别</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead>' +
-                    '<tbody>' + tableRows + '</tbody>' +
-                '</table>' +
-                paginationHtml +
+            // 数据表格 + 初审画像（3:2），表格默认10条可滚动
+            (function() {
+                var showAllTable = (window._showAllTable === true);
+                var initRows = filtered.slice(0, 10);
+                var initHtml = '';
+                if (initRows.length === 0) initHtml = '<tr><td colspan="7" style="padding:30px;color:#94a3b8;">暂无匹配的失误记录</td></tr>';
+                else initRows.forEach(function(e) {
+                    var srcTag = e.source === '初审' ? 'cs' : (e.source === '抽检' ? 'cj' : 'qa');
+                    initHtml += '<tr><td>' + e.dateStr + '</td><td>' + escapeHtml(e.site) + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + escapeHtml(e.category) + '</td><td>' + escapeHtml(e.reviewer) + '</td><td style="text-align:center;max-width:300px;font-size:0.78rem;">' + escapeHtml(e.note) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
+                });
+                var expandBtn = '';
+                if (filtered.length > 10) {
+                    expandBtn = '<div style="text-align:center;margin-top:6px;"><span onclick="window._showAllTable=' + (!showAllTable) + ';renderErrorDashboardContent();" style="color:#2a5298;cursor:pointer;font-size:0.75rem;text-decoration:underline;">' + (showAllTable ? '收起▲' : '查看全部(' + filtered.length + '条)▼') + '</span></div>';
+                }
+                var tableBlock;
+                if (showAllTable) {
+                    // 展开全部：每20条一页
+                    var pgSize = 20;
+                    var allPages = Math.ceil(filtered.length / pgSize) || 1;
+                    var pg = errorDashboardPage || 1;
+                    if (pg > allPages) pg = allPages;
+                    var start = (pg - 1) * pgSize;
+                    var pgData = filtered.slice(start, start + pgSize);
+                    var allRows = '';
+                    pgData.forEach(function(e) {
+                        var srcTag = e.source === '初审' ? 'cs' : (e.source === '抽检' ? 'cj' : 'qa');
+                        allRows += '<tr><td>' + e.dateStr + '</td><td>' + escapeHtml(e.site) + '</td><td><span class="source-tag ' + srcTag + '">' + e.source + '</span></td><td>' + escapeHtml(e.category) + '</td><td>' + escapeHtml(e.reviewer) + '</td><td style="text-align:center;max-width:300px;font-size:0.78rem;">' + escapeHtml(e.note) + '</td><td style="font-size:0.7rem;">' + escapeHtml(e.qcCode) + '</td></tr>';
+                    });
+                    var pgHtml = allPages > 1 ? '<div class="pagination"><button ' + (pg <= 1 ? 'disabled' : '') + ' onclick="errorDashboardPage=' + (pg - 1) + ';renderErrorDashboardContent();">上一页</button><span style="font-size:0.8rem;">' + pg + '/' + allPages + '</span><button ' + (pg >= allPages ? 'disabled' : '') + ' onclick="errorDashboardPage=' + (pg + 1) + ';renderErrorDashboardContent();">下一页</button></div>' : '';
+                    tableBlock = '<div class="error-table-wrapper"><table class="error-table"><thead><tr><th>日期</th><th>站点</th><th>来源</th><th>失误类别</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + allRows + '</tbody></table>' + pgHtml + '</div>' + expandBtn;
+                } else {
+                    tableBlock = '<div class="error-table-wrapper" style="max-height:400px;overflow-y:auto;"><table class="error-table"><thead><tr><th>日期</th><th>站点</th><th>来源</th><th>失误类别</th><th>初审人</th><th>失误备注</th><th>质检码</th></tr></thead><tbody>' + initHtml + '</tbody></table></div>' + expandBtn;
+                }
+                return '<div style="display:flex;gap:16px;">' +
+                    '<div style="flex:3;min-width:0;">' +
+                        '<div style="font-weight:700;color:#1f3a6b;margin-bottom:8px;font-size:0.85rem;">📋 失误列表</div>' +
+                        tableBlock +
+                    '</div>';
+            })() +
+                '<div class="report-box" style="flex:2;min-width:0;margin-bottom:0;">' +
+                    '<div style="font-weight:700;color:#1f3a6b;margin-bottom:6px;font-size:0.85rem;">🎯 初审画像</div>' +
+                    '<input type="text" id="portraitSearch" placeholder="🔍 搜索..." oninput="var v=this.value.toLowerCase();var items=this.parentElement.querySelectorAll(\'.portrait-row\');items.forEach(function(el){el.style.display=v?(el.textContent.toLowerCase().indexOf(v)>=0?\'\':\'none\'):\'\';});" style="width:100%;padding:5px 10px;border:1px solid #e2e8f0;border-radius:14px;font-size:0.72rem;margin-bottom:6px;">' +
+                    '<div style="max-height:55vh;overflow-y:auto;">' +
+                    (window._portraitHtml || '<div style="color:#94a3b8;font-size:0.78rem;text-align:center;padding:20px;">暂无数据</div>') +
+                    '</div>' + (window._portraitExpandLink || '') +
+                '</div>' +
             '</div>' +
         '</div>';
 
