@@ -6636,7 +6636,6 @@ ${(() => { try { if (!siteColumn) return ''; const sm = {}; allRows.forEach(row 
                     var errorCategory = (row[1] || '').toString().trim();
                     var issueDesc = (row[2] || '').toString().trim();
                     var dirText = (row[4] || '').toString().trim();
-                    // 图片存链接
                     var issuePhotos = [];
                     var dirPhotos = [];
                     if (row[3] && row[3].link) issuePhotos.push(row[3].link);
@@ -12041,11 +12040,11 @@ URL.revokeObjectURL(url);
             docHtml += '<div class="case-card"><div class="qc-code">🔖 质检码：' + escapeHtml(c.qcCode) + ' | 🏷️ ' + escapeHtml(c.errorCategory || '') + '</div>' +
             '<div class="label">📝 问题描述</div><div class="desc">' + escapeHtml(c.issueDesc || '') + '</div>';
             if (c.issuePhotos && c.issuePhotos.length > 0) {
-                docHtml += '<div class="label">📷 问题照片</div>' + c.issuePhotos.map(function(p) { return '<img src="' + p + '" alt="问题照片">'; }).join('');
+                docHtml += '<div class="label">📷 问题照片</div>' + c.issuePhotos.map(function(p) { return '<img src="' + p + '" alt="问题照片" style="max-width:100%;">'; }).join('');
             }
             docHtml += '<div class="label">✅ 应操作方向</div><div class="correct">' + escapeHtml(c.correctDir || '') + '</div>';
             if (c.dirPhotos && c.dirPhotos.length > 0) {
-                docHtml += '<div class="label">📷 方向示例照片</div>' + c.dirPhotos.map(function(p) { return '<img src="' + p + '" alt="方向照片">'; }).join('');
+                docHtml += '<div class="label">📷 方向示例照片</div>' + c.dirPhotos.map(function(p) { return '<img src="' + p + '" alt="方向照片" style="max-width:100%;">'; }).join('');
             }
             docHtml += '</div>';
         });
@@ -12948,7 +12947,7 @@ URL.revokeObjectURL(url);
 
     function _syncSetItem(key, value) {
         _realLS.setItem(key, value);
-        if (key && !key.startsWith('_')) {
+        if (key && !key.startsWith('_') && key !== 'manualCases' && key !== 'biweeklyCases' && key !== 'knowledgeCases') {
             _syncQueue[key] = value;
             if (_syncTimer) clearTimeout(_syncTimer);
             _syncTimer = setTimeout(_syncFlush, 2000);
@@ -12970,7 +12969,7 @@ URL.revokeObjectURL(url);
 
     function _syncRemoveItem(key) {
         _realLS.removeItem(key);
-        if (key && !key.startsWith('_')) {
+        if (key && !key.startsWith('_') && key !== 'manualCases' && key !== 'biweeklyCases' && key !== 'knowledgeCases') {
             // 从云端删除该 key
             fetch(SUPABASE_URL + '/rest/v1/app_data?key=eq.' + encodeURIComponent(key), {
                 method: 'DELETE',
