@@ -3478,7 +3478,7 @@
             const detailItems = person.details.map(d => `<li class="${d.isMerged ? 'error-red' : ''}">${escapeHtml(d.text)}</li>`).join('');
             detailsHtml += `<div style="margin-bottom:20px;"><div style="font-weight:700;">👤 ${escapeHtml(person.name)}（${person.count}条）</div><ul class="detail-list">${detailItems || '<li>暂无明细</li>'}</ul></div>`;
         });
-        const modalHtml = `<div class="modal-overlay" id="${modalId}"><div class="modal-container"><div class="modal-header"><span>📋 失误来源【${escapeHtml(sourceName)}】的人员分布</span><div style="display:flex;gap:8px;"><button class="modal-screenshot-btn" data-modal-id="${modalId}" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:0.75rem;">📸 截图</button><button class="modal-close-btn">✕</button></div></div><div class="modal-body"><div class="summary-card"><strong>📊 总计：${total} 条记录</strong></div><div class="section-title">👥 人员分布</div><table class="modal-table"><thead><tr><th style="text-align:left;">姓名</th><th>个数</th><th>占比</th></tr></thead><tbody>${tableRows}</tbody></table><div class="section-title">📝 详细失误明细</div>${detailsHtml || '<div class="empty-placeholder">暂无明细数据</div>'}</div></div></div>`;
+        const modalHtml = `<div class="modal-overlay" id="${modalId}"><div class="modal-container"><div class="modal-header"><span>📋 失误来源【${escapeHtml(sourceName)}】的人员分布</span><div style="display:flex;gap:8px;"><button class="modal-screenshot-btn" data-modal-id="${modalId}" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:0.75rem;">📸 截图</button><button class="modal-close-btn">✕</button></div></div><div class="modal-body"><div class="summary-card"><strong>📊 总计：${total} 条记录</strong></div><div class="section-title">👥 👤 Top5 人员</div><table class="modal-table"><thead><tr><th style="text-align:left;">姓名</th><th>个数</th><th>占比</th></tr></thead><tbody>${tableRows}</tbody></table><div class="section-title">📝 详细失误明细</div>${detailsHtml || '<div class="empty-placeholder">暂无明细数据</div>'}</div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         const modalElement = document.getElementById(modalId);
         modalElement.querySelector('.modal-close-btn').onclick = () => modalElement.remove();
@@ -3646,7 +3646,7 @@
             });
         });
         
-        const modalHtml = `<div class="modal-overlay" id="${modalId}"><div class="modal-container"><div class="modal-header"><span>📋 失误类别【${escapeHtml(categoryName)}】详细分析</span><div style="display:flex;gap:8px;"><button class="modal-screenshot-btn" data-modal-id="${modalId}" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:0.75rem;">📸 截图</button><button class="modal-close-btn">✕</button></div></div><div class="modal-body" id="modalBody_${modalId}"><div class="summary-card"><strong>📊 总计：${totalCount} 条问题记录</strong></div><div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;min-width:0;"><div class="section-title">👥 初审人员分布</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">初审</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">失误数</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">百分占比</th></tr></thead><tbody>${reviewerRows}</tbody></table></div><div style="flex:1;min-width:0;"><div class="section-title">📋 失误来源分布</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">来源</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">失误数</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">百分占比</th></tr></thead><tbody>${sourceRows}</tbody></table></div></div><div class="section-title">📝 问题点分布</div><table class="modal-table"><thead><tr><th style="width:22.5%;text-align:center;">初审</th><th style="width:22.5%;text-align:center;">问题点</th><th style="width:22.5%;text-align:center;">占比</th><th colspan="2" style="width:32.5%;text-align:center;">质检码</th></tr></thead><tbody>${issueRows}</tbody></table></div></div></div>`;
+        const modalHtml = `<div class="modal-overlay" id="${modalId}"><div class="modal-container"><div class="modal-header"><span>📋 失误类别【${escapeHtml(categoryName)}】详细分析</span><div style="display:flex;gap:8px;"><button class="modal-screenshot-btn" data-modal-id="${modalId}" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:0.75rem;">📸 截图</button><button class="modal-close-btn">✕</button></div></div><div class="modal-body" id="modalBody_${modalId}"><div class="summary-card"><strong>📊 总计：${totalCount} 条问题记录</strong></div><div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;min-width:0;"><div class="section-title">👥 初审👤 Top5 人员</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">初审</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">失误数</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">百分占比</th></tr></thead><tbody>${reviewerRows}</tbody></table></div><div style="flex:1;min-width:0;"><div class="section-title">📋 失误来源分布</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">来源</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">失误数</th><th style="padding:6px 10px;font-size:0.9rem;background:#eef2ff;border-bottom:1px solid #ddd;text-align:center;">百分占比</th></tr></thead><tbody>${sourceRows}</tbody></table></div></div><div class="section-title">📝 问题点分布</div><table class="modal-table"><thead><tr><th style="width:22.5%;text-align:center;">初审</th><th style="width:22.5%;text-align:center;">问题点</th><th style="width:22.5%;text-align:center;">占比</th><th colspan="2" style="width:32.5%;text-align:center;">质检码</th></tr></thead><tbody>${issueRows}</tbody></table></div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         const modalElement = document.getElementById(modalId);
         modalElement.querySelector('.modal-close-btn').onclick = () => modalElement.remove();
@@ -12110,7 +12110,7 @@ URL.revokeObjectURL(url);
                     '<div style="height:8px;background:#f1f5f9;border-radius:4px;margin-top:4px;"><div style="width:'+siteBarW+'%;height:100%;background:'+heatBarColor(parseFloat(sitePct)/100)+';border-radius:4px;"></div></div>' +
                 '</div>' +
                 '<div style="border-top:1px solid #eef2f6;padding-top:8px;">' +
-                    '<div style="font-size:0.65rem;color:#94a3b8;margin-bottom:4px;">人员分布</div>' +
+                    '<div style="font-size:0.65rem;color:#94a3b8;margin-bottom:4px;">👤 Top5 人员</div>' +
                     (revsHtml || '<div style="color:#94a3b8;font-size:0.65rem;">-</div>') +
                 '</div>' +
             '</div>';
@@ -14816,6 +14816,17 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         }).then(function(r) { return r.json(); }).then(function(rows) {
             if (Array.isArray(rows)) {
                 rows.forEach(function(row) {
+                    // 学习计划数据不被云端旧数据覆盖
+                    if (row.key === 'learningPlanData') {
+                        var existing = _realLS.getItem('learningPlanData');
+                        if (existing) {
+                            try {
+                                var cur = JSON.parse(existing);
+                                var cloud = JSON.parse(row.value);
+                                if (Object.keys(cur).length >= Object.keys(cloud).length) return;
+                            } catch(e) {}
+                        }
+                    }
                     if (row.key && row.value !== null) _realLS.setItem(row.key, row.value);
                 });
             }
@@ -14904,7 +14915,11 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
             var sbLP = document.querySelector('.sidebar');
             if (sbLP) sbLP.style.display = 'none';
             var mcLP = document.getElementById('mainContent');
-            if (mcLP) { mcLP.style.padding = '0'; mcLP.style.marginLeft = '0'; mcLP.innerHTML = '<div style=\"text-align:center;padding:60px;\">⏳ 加载推荐学习地图...</div>'; }
+            if (mcLP) { mcLP.style.padding = '0'; mcLP.style.marginLeft = '0'; }
+            // 先保存本地数据副本，防止云端同步覆盖
+            var _lpBackup = localStorage.getItem('learningPlanData');
+            // 直接从本地读取，不等云端同步
+            setTimeout(function(){ renderLearningPlanView(initLearnPlan); }, 100);
         }
         // 初始化侧边栏手风琴
         buildSidebarAccordion();
@@ -14912,7 +14927,9 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         document.querySelector('.nav-btn[data-nav="admin"]').addEventListener('click', function() { switchNav('admin'); });
         _syncPullAll().then(function(count) {
             if (count > 0) { try { loadData(); } catch(e) {} }
-            if (initLearnPlan) { renderLearningPlanView(initLearnPlan); return; }
+            // 恢复学习计划数据（防止云端同步覆盖本地新数据）
+            if (initLearnPlan && _lpBackup) { localStorage.setItem('learningPlanData', _lpBackup); }
+            if (initLearnPlan) { return; } // 已通过setTimeout提前渲染，不重复渲染
             var initExam = initParams.get('exam');
             var initReport = initParams.get('report');
             if (initExam) { startStandaloneExam(initExam); }
