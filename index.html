@@ -7907,6 +7907,7 @@ URL.revokeObjectURL(url);
             btn.addEventListener('click', function() {
                 var nav = btn.dataset.nav;
                 currentSubNav = nav;
+                currentNav = nav;
                 for (var i = 0; i < SIDEBAR_MENU.length; i++) {
                     var found = SIDEBAR_MENU[i].subs.find(function(s) { return s.nav === nav; });
                     if (found) { expandedCategory = SIDEBAR_MENU[i].id; break; }
@@ -14024,14 +14025,20 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         showToast('✅ 报告已下载', 'success');
     }
 
-    // 每5分钟自动刷新（Web Worker 驱动，后台标签页不被节流）
+    // 每5分钟自动刷新（优先 Web Worker，降级 setInterval）
     (function() {
-        var _refreshWorkerCode = 'setInterval(function(){postMessage("tick")},300000);';
-        var _refreshBlob = new Blob([_refreshWorkerCode], {type: 'application/javascript'});
-        var _refreshWorker = new Worker(URL.createObjectURL(_refreshBlob));
-        _refreshWorker.onmessage = function() {
+        var _doRefresh = function() {
             if (currentNav === 'errorDashboard' && !window._isLearningPlanView) refreshErrorDashboardData(true);
         };
+        try {
+            var _refreshWorkerCode = 'setInterval(function(){postMessage("tick")},300000);';
+            var _refreshBlob = new Blob([_refreshWorkerCode], {type: 'application/javascript'});
+            var _refreshWorker = new Worker(URL.createObjectURL(_refreshBlob));
+            _refreshWorker.onmessage = _doRefresh;
+        } catch(e) {
+            // CSP 或 file:// 限制时降级为普通 setInterval
+            setInterval(_doRefresh, 300000);
+        }
     })();
 
     // ==================== 考试系统模块 ====================
