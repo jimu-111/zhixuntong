@@ -11761,7 +11761,7 @@ URL.revokeObjectURL(url);
             '<div class="modal-header">📅 选择' + (type === 'week' ? '周度' : '月度') + '范围<button class="modal-close-btn" id="periodClose">✕</button></div>' +
             '<div class="modal-body" style="text-align:center;padding:20px;">' +
                 options.map(function(o, i) {
-                    return '<button style="display:block;width:100%;padding:12px;margin-bottom:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;cursor:pointer;font-size:0.9rem;text-align:left;" onclick="errorDashboardFilter.period=\'' + type + '\';errorDashboardFilter.customStart=\'' + formatDate(o.start) + '\';errorDashboardFilter.customEnd=\'' + formatDate(o.end) + '\';errorDashboardPage=1;this.closest(\'.modal-overlay\').remove();renderErrorDashboardContent();">' + (i === 0 ? '📌 ' : '📅 ') + o.label + '</button>';
+                    return '<button style="display:block;width:100%;padding:12px;margin-bottom:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;cursor:pointer;font-size:0.9rem;text-align:left;" onclick="errorDashboardFilter.period=\'' + type + '\';errorDashboardFilter.customStart=\'' + formatDate(o.start) + '\';errorDashboardFilter.customEnd=\'' + formatDate(o.end) + '\';errorDashboardPage=1;this.closest(\'.modal-overlay\').remove();refreshErrorDashboardThenRender();">' + (i === 0 ? '📌 ' : '📅 ') + o.label + '</button>';
                 }).join('') +
                 '<button style="display:block;width:100%;padding:10px;margin-top:4px;background:transparent;border:1px solid #cbd5e1;border-radius:12px;cursor:pointer;font-size:0.85rem;color:#5e6f8d;" onclick="this.closest(\'.modal-overlay\').remove();">取消</button>' +
             '</div>' +
@@ -11800,7 +11800,7 @@ URL.revokeObjectURL(url);
             errorDashboardFilter.customEnd = end;
             errorDashboardPage = 1;
             overlay.remove();
-            renderErrorDashboardContent();
+            refreshErrorDashboardThenRender();
         };
     }
 
@@ -11954,6 +11954,22 @@ URL.revokeObjectURL(url);
         errorDashboardRefreshing = false;
     }
 
+    // 切换视图时：先用缓存即刻渲染，后台静默拉取最新数据（不二次渲染，避免抖动）
+    function refreshErrorDashboardThenRender() {
+        // 1. 即刻用现有缓存渲染，切换秒开不抖动
+        renderErrorDashboardContent();
+        // 2. 后台静默拉取最新数据，更新到 errorDashboardData 供下次切换使用
+        if (!errorDashboardRefreshing) {
+            refreshErrorDashboardData(false, true);
+        }
+    }
+
+    // 将 YYYY-MM-DD 字符串解析为本地时间 Date（避免 new Date('YYYY-MM-DD') 按UTC解析的时区偏移）
+    function parseLocalDate(dateStr) {
+        var parts = dateStr.split('-');
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+
     function getFilteredErrors() {
         var data = errorDashboardData;
         var f = errorDashboardFilter;
@@ -11962,18 +11978,18 @@ URL.revokeObjectURL(url);
 
         // 时间段筛选
         if (f.period === 'custom' && f.customStart && f.customEnd) {
-            var cs = new Date(f.customStart);
-            var ce = new Date(f.customEnd);
+            var cs = parseLocalDate(f.customStart);
+            var ce = parseLocalDate(f.customEnd);
             ce.setHours(23, 59, 59, 999);
             data = data.filter(function(e) { return e.date >= cs && e.date <= ce; });
         } else if (f.period === 'week' && f.customStart && f.customEnd) {
-            var ws = new Date(f.customStart);
-            var we = new Date(f.customEnd);
+            var ws = parseLocalDate(f.customStart);
+            var we = parseLocalDate(f.customEnd);
             we.setHours(23, 59, 59, 999);
             data = data.filter(function(e) { return e.date >= ws && e.date <= we; });
         } else if (f.period === 'month' && f.customStart && f.customEnd) {
-            var ms = new Date(f.customStart);
-            var me = new Date(f.customEnd);
+            var ms = parseLocalDate(f.customStart);
+            var me = parseLocalDate(f.customEnd);
             me.setHours(23, 59, 59, 999);
             data = data.filter(function(e) { return e.date >= ms && e.date <= me; });
         } else if (f.period === 'day') {
@@ -13486,7 +13502,7 @@ URL.revokeObjectURL(url);
                     '<div class="report-title" style="margin-bottom:0;padding-bottom:0;border:none;">📋 失误分析看板</div>' +
                     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
                         '<div class="filter-bar" style="margin-bottom:0;gap:3px;">' +
-                            '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;window._tablePage=1;renderErrorDashboardContent();" style="font-size:0.7rem;padding:4px 10px;">📅 日度</button>' +
+                            '<button class="filter-btn' + (f.period === 'day' ? ' active' : '') + '" onclick="errorDashboardFilter.period=\'day\';errorDashboardPage=1;window._tablePage=1;refreshErrorDashboardThenRender();" style="font-size:0.7rem;padding:4px 10px;">📅 日度</button>' +
                             '<button class="filter-btn' + (f.period === 'week' ? ' active' : '') + '" onclick="showPeriodPopup(\'week\')" style="font-size:0.7rem;padding:4px 10px;">📊 周度</button>' +
                             '<button class="filter-btn' + (f.period === 'month' ? ' active' : '') + '" onclick="showPeriodPopup(\'month\')" style="font-size:0.7rem;padding:4px 10px;">📈 月度</button>' +
                             '<button class="filter-btn' + (f.period === 'custom' ? ' active' : '') + '" onclick="showCustomDatePopup()" style="font-size:0.7rem;padding:4px 10px;">📆 自定义</button>' +
@@ -13696,7 +13712,7 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
                                     errorDashboardFilter.site = oldSite;
                                     var curStats = {};
                                     allFiltered.forEach(function(e){ curStats[e.site] = (curStats[e.site]||0)+1; });
-                                    var totalAll = allFiltered.length || 1;
+                                    var totalAll = allFiltered.length;
                                     var sites = ['深圳','青岛','成都'];
                                     var list = sites.map(function(s){ return {name:s, count:curStats[s]||0}; }).sort(function(a,b){return b.count-a.count;});
                                     var max = Math.max(1, list[0].count);
@@ -13811,32 +13827,59 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         if (f.period === 'week') { prevLabel = '上周'; }
         else if (f.period === 'month') { prevLabel = '上月'; }
         else { prevLabel = '上期'; }
-        // 粗略估算：取上期数据（从全量数据中筛）
+        // 上期数据：优先从筛选的 customStart/End 推算，确保与当前视图口径一致
         (function(){
             var now2 = new Date(); var allData = errorDashboardData;
+            var today = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
             if (f.period === 'day') {
                 var yesterday = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate()-1);
-                var prevDay = allData.filter(function(e){ return e.date >= yesterday && e.date < new Date(now2.getFullYear(), now2.getMonth(), now2.getDate()); });
+                var prevDay = allData.filter(function(e){ return e.date >= yesterday && e.date < today; });
                 prevTotal = prevDay.length;
             } else if (f.period === 'week') {
-                var dayOfWeek = now2.getDay(); var mondayOffset = dayOfWeek===0?6:dayOfWeek-1;
-                var thisMon = new Date(now2.getFullYear(),now2.getMonth(),now2.getDate()-mondayOffset);
-                var prevMon = new Date(thisMon.getTime()-7*86400000);
-                var prevSun = new Date(thisMon.getTime()-86400000);
-                var prevWeek = allData.filter(function(e){ return e.date >= prevMon && e.date <= prevSun; });
-                prevTotal = prevWeek.length;
+                if (f.customStart) {
+                    var curWeekStart = parseLocalDate(f.customStart);
+                    var prevMon = new Date(curWeekStart.getTime() - 7 * 86400000);
+                    var prevSun = new Date(curWeekStart.getTime() - 86400000);
+                    var prevWeek = allData.filter(function(e){ return e.date >= prevMon && e.date <= prevSun; });
+                    prevTotal = prevWeek.length;
+                } else {
+                    var dayOfWeek = today.getDay();
+                    var thisMon = new Date(today);
+                    thisMon.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+                    var prevMon = new Date(thisMon.getTime() - 7 * 86400000);
+                    var prevSun = new Date(thisMon.getTime() - 86400000);
+                    var prevWeek = allData.filter(function(e){ return e.date >= prevMon && e.date <= prevSun; });
+                    prevTotal = prevWeek.length;
+                }
             } else if (f.period === 'month') {
-                var thisMonthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
-                var prevMonthStart = new Date(now2.getFullYear(), now2.getMonth()-1, 1);
-                var prevMonthEnd = new Date(now2.getFullYear(), now2.getMonth(), 0);
-                var prevMonth = allData.filter(function(e){ return e.date >= prevMonthStart && e.date <= prevMonthEnd; });
-                prevTotal = prevMonth.length;
+                if (f.customStart) {
+                    // 从筛选的自定义月起点推算上一个自定义月
+                    var curStart = parseLocalDate(f.customStart);
+                    var prevMonthStart = new Date(curStart.getFullYear(), curStart.getMonth() - 1, curStart.getDate());
+                    var prevMonthEnd = new Date(curStart.getFullYear(), curStart.getMonth(), curStart.getDate() - 1);
+                    prevMonthEnd.setHours(23, 59, 59, 999);
+                    var prevMonth = allData.filter(function(e){ return e.date >= prevMonthStart && e.date <= prevMonthEnd; });
+                    prevTotal = prevMonth.length;
+                } else {
+                    // 默认：从今天推算
+                    var thisMonthStart;
+                    if (today.getDate() >= 27) {
+                        thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 27);
+                    } else {
+                        thisMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 27);
+                    }
+                    var prevMonthStart = new Date(thisMonthStart.getFullYear(), thisMonthStart.getMonth() - 1, 27);
+                    var prevMonthEnd = new Date(thisMonthStart.getFullYear(), thisMonthStart.getMonth(), 26);
+                    prevMonthEnd.setHours(23, 59, 59, 999);
+                    var prevMonth = allData.filter(function(e){ return e.date >= prevMonthStart && e.date <= prevMonthEnd; });
+                    prevTotal = prevMonth.length;
+                }
             } else { prevTotal = 0; }
             if (prevTotal > 0) {
                 var diff = totalErrors - prevTotal;
-                var diffPct = prevTotal>0?(Math.abs(diff)/prevTotal*100).toFixed(0):0;
-                if (diff > 0) { diffText = '↑ 上升 ' + diffPct + '%（+' + diff + '）'; diffColor = '#c0392b'; }
-                else if (diff < 0) { diffText = '↓ 下降 ' + diffPct + '%（' + diff + '）'; diffColor = '#166534'; }
+                var diffPct = (Math.abs(diff) / prevTotal * 100).toFixed(2);
+                if (diff > 0) { diffText = '↑ ' + diffPct + '%'; diffColor = '#c0392b'; }
+                else if (diff < 0) { diffText = '↓ ' + diffPct + '%'; diffColor = '#166534'; }
                 else { diffText = '→ 持平'; diffColor = '#5e6f8d'; }
             }
         })();
@@ -13888,7 +13931,7 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         '<div class="stat-item"><div class="stat-num">'+totalErrors+'</div><div class="stat-lbl">本期失误</div></div>'+
         '<div class="stat-item"><div class="stat-num">'+prevTotal+'</div><div class="stat-lbl">'+prevLabel+'失误</div></div>'+
         '<div class="stat-item"><div class="stat-num" style="color:'+diffColor+';">'+(totalErrors-prevTotal>0?'+':'')+(totalErrors-prevTotal)+'</div><div class="stat-lbl">变化量</div></div>'+
-        '<div class="stat-item"><div class="stat-num" style="color:'+diffColor+';">'+diffText.substring(0,6)+'</div><div class="stat-lbl">趋势</div></div>'+
+        '<div class="stat-item"><div class="stat-num" style="color:'+diffColor+';">'+diffText+'</div><div class="stat-lbl">趋势</div></div>'+
         '</div></div>' : '')+
         // 亮灯
         '<div class="card"><h2>🚦 亮灯预警</h2><div style="display:flex;gap:12px;justify-content:center;">'+
@@ -13981,10 +14024,15 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
         showToast('✅ 报告已下载', 'success');
     }
 
-    // 每120分钟自动刷新
-    setInterval(function() {
-        if (currentNav === 'errorDashboard' && !window._isLearningPlanView) refreshErrorDashboardData(true);
-    }, 600000);
+    // 每5分钟自动刷新（Web Worker 驱动，后台标签页不被节流）
+    (function() {
+        var _refreshWorkerCode = 'setInterval(function(){postMessage("tick")},300000);';
+        var _refreshBlob = new Blob([_refreshWorkerCode], {type: 'application/javascript'});
+        var _refreshWorker = new Worker(URL.createObjectURL(_refreshBlob));
+        _refreshWorker.onmessage = function() {
+            if (currentNav === 'errorDashboard' && !window._isLearningPlanView) refreshErrorDashboardData(true);
+        };
+    })();
 
     // ==================== 考试系统模块 ====================
     const EXAM_HISTORY_KEY = 'examHistoryData';
@@ -14948,6 +14996,13 @@ return '<div class="report-box" style="margin-bottom:16px;padding:24px 18px;">' 
                 refreshErrorDashboardData(true, true);
             });
         }, 300);
+
+        // 页面可见性变化时自动刷新失误看板数据（切回页面时静默拉取最新）
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && currentNav === 'errorDashboard' && !window._isLearningPlanView) {
+                refreshErrorDashboardData(false, true);
+            }
+        });
     })();
 
     // 全局图片兜底：加载失败显示占位，点击通过代理加载
